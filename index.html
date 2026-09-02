@@ -553,7 +553,7 @@ function openCalcModal() {
     <div class="hint">Dini ölçüt fiziksel alametlerdir (âdet görme, ihtilam vb.); kesin tarihi bilmiyorsanız yaklaşık olarak kadın için 9, erkek için 12 kameri yıl kullanılabilir.</div>
     <button type="button" class="link-btn" onclick="fillBaligFromBirth()">Doğum tarihinden büluğ tarihini hesapla</button>
 
-    <label for="calcBalig">Büluğ tarihi (kaza sorumluluğunun başladığı tarih)</label>
+    <label for="calcBalig">Büluğ tarihi (opsiyonel — biliyorsanız girin, bilmiyorsanız boş bırakın, doğum tarihi ve yaştan otomatik hesaplanır)</label>
     <input type="date" id="calcBalig" value="${profile.baligDate || ""}">
 
     <label for="calcTamStart">Namazlarınızı eksiksiz/aksatmadan kılmaya başladığınız tarih</label>
@@ -585,14 +585,23 @@ function fillBaligFromBirth() {
 function previewCalc() {
   const gender = document.getElementById("calcGender").value;
   const birth = document.getElementById("calcBirth").value;
-  const baligAgeYears = parseFloat(document.getElementById("calcBaligAge").value) || null;
-  const baligStr = document.getElementById("calcBalig").value;
+  let baligAgeYears = parseFloat(document.getElementById("calcBaligAge").value) || null;
+  let baligStr = document.getElementById("calcBalig").value;
   const tamStr = document.getElementById("calcTamStart").value;
   const already = parseInt(document.getElementById("calcAlready").value) || 0;
   const preview = document.getElementById("calcPreview");
 
+  if (!baligStr && birth) {
+    if (!baligAgeYears) {
+      baligAgeYears = gender === "kadin" ? 9 : 12;
+      document.getElementById("calcBaligAge").value = baligAgeYears;
+    }
+    fillBaligFromBirth();
+    baligStr = document.getElementById("calcBalig").value;
+  }
+
   if (!baligStr || !tamStr) {
-    preview.innerHTML = `<div class="preview-box">Lütfen en azından büluğ tarihini ve eksiksiz namaza başladığınız tarihi girin.</div>`;
+    preview.innerHTML = `<div class="preview-box">Lütfen büluğ tarihini doğrudan girin, veya doğum tarihinizi girin ki tahmini yaşa göre otomatik hesaplansın.</div>`;
     return;
   }
   const d1 = new Date(baligStr), d2 = new Date(tamStr);
