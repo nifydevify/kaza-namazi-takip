@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kaza Namazı Takip</title>
+<style>
+  :root {
+    --bg: #0f1419;
+    --card: #1a2129;
+    --accent: #2a9d8f;
+    --accent2: #e76f51;
+    --text: #e8eaed;
+    --muted: #8b96a3;
+    --border: #2c3540;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    padding: 20px;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 1.4rem;
+    text-align: center;
+    margin: 10px 0 4px;
+  }
+  .subtitle {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-bottom: 20px;
+  }
+  .total-card {
+    background: linear-gradient(135deg, var(--accent), #1d7d72);
+    border-radius: 14px;
+    padding: 18px;
+    text-align: center;
+    margin-bottom: 20px;
+  }
+  .total-card .num { font-size: 2.2rem; font-weight: 700; }
+  .total-card .lbl { font-size: 0.8rem; opacity: 0.9; }
+  .row {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .row .name { font-weight: 600; font-size: 1rem; }
+  .row .count { color: var(--accent); font-size: 0.85rem; margin-top: 2px; }
+  .btns { display: flex; gap: 8px; align-items: center; }
+  .btns button {
+    width: 34px; height: 34px;
+    border-radius: 8px;
+    border: none;
+    font-size: 1.1rem;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .btn-minus { background: #3a2a2a; color: var(--accent2); }
+  .btn-plus { background: #223a36; color: var(--accent); }
+  .val {
+    min-width: 32px;
+    text-align: center;
+    font-weight: 700;
+    font-size: 1.1rem;
+  }
+  .set-target {
+    width: 100%;
+    background: none;
+    border: 1px dashed var(--border);
+    color: var(--muted);
+    border-radius: 10px;
+    padding: 10px;
+    font-size: 0.85rem;
+    cursor: pointer;
+    margin-top: 6px;
+  }
+  .footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 0.75rem;
+    margin-top: 24px;
+  }
+</style>
+</head>
+<body>
+
+<h1>Kaza Namazı Takip</h1>
+<div class="subtitle">Her vakit için kalan kaza sayısını gir, kıldıkça azalt</div>
+
+<div class="total-card">
+  <div class="num" id="totalRemaining">0</div>
+  <div class="lbl">Toplam Kalan Kaza</div>
+</div>
+
+<div id="list"></div>
+
+<button class="set-target" onclick="bulkSet()">Toplu Başlangıç Sayısı Gir</button>
+
+<div class="footer">Veriler bu cihazda saklanır (tarayıcı hafızası)</div>
+
+<script>
+const NAMAZLAR = [
+  { key: "sabah", ad: "Sabah" },
+  { key: "ogle", ad: "Öğle" },
+  { key: "ikindi", ad: "İkindi" },
+  { key: "aksam", ad: "Akşam" },
+  { key: "yatsi", ad: "Yatsı" },
+  { key: "vitir", ad: "Vitir" },
+];
+
+let data = JSON.parse(localStorage.getItem("kazaData") || "{}");
+NAMAZLAR.forEach(n => { if (!(n.key in data)) data[n.key] = 0; });
+
+function save() {
+  localStorage.setItem("kazaData", JSON.stringify(data));
+  render();
+}
+
+function change(key, delta) {
+  data[key] = Math.max(0, data[key] + delta);
+  save();
+}
+
+function bulkSet() {
+  const val = prompt("Her vakit için başlangıç kaza sayısını gir (örn: 500):");
+  const n = parseInt(val);
+  if (!isNaN(n) && n >= 0) {
+    NAMAZLAR.forEach(x => data[x.key] = n);
+    save();
+  }
+}
+
+function render() {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  let total = 0;
+  NAMAZLAR.forEach(n => {
+    total += data[n.key];
+    const row = document.createElement("div");
+    row.className = "row";
+    row.innerHTML = `
+      <div>
+        <div class="name">${n.ad}</div>
+        <div class="count">${data[n.key]} kaza kaldı</div>
+      </div>
+      <div class="btns">
+        <button class="btn-minus" onclick="change('${n.key}', -1)">−</button>
+        <div class="val">${data[n.key]}</div>
+        <button class="btn-plus" onclick="change('${n.key}', 1)">+</button>
+      </div>
+    `;
+    list.appendChild(row);
+  });
+  document.getElementById("totalRemaining").textContent = total;
+}
+
+render();
+</script>
+
+</body>
+</html>
