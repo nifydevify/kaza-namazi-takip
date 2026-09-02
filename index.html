@@ -529,8 +529,6 @@ function closeModal() {
 }
 
 /* ---------- Büluğ/tarih tabanlı otomatik hesaplama ---------- */
-const KAMERI_YIL_GUN = 354.36;
-
 function openCalcModal() {
   const profile = JSON.parse(localStorage.getItem("kazaProfile") || "{}");
   const todayStr = fmtDate(new Date());
@@ -548,9 +546,9 @@ function openCalcModal() {
     <label for="calcBirth">Doğum tarihiniz (opsiyonel, tahmin için)</label>
     <input type="date" id="calcBirth" value="${profile.birthDate || ""}">
 
-    <label for="calcBaligAge">Tahmini büluğ yaşı (kameri/hicri yıl)</label>
+    <label for="calcBaligAge">Tahmini büluğ yaşı</label>
     <input type="number" id="calcBaligAge" min="1" max="20" step="0.5" value="${profile.baligAgeYears || ""}" placeholder="Kadın: 9, Erkek: 12">
-    <div class="hint">Dini ölçüt fiziksel alametlerdir (âdet görme, ihtilam vb.); kesin tarihi bilmiyorsanız yaklaşık olarak kadın için 9, erkek için 12 kameri yıl kullanılabilir.</div>
+    <div class="hint">Dini ölçüt fiziksel alametlerdir (âdet görme, ihtilam vb.); kesin tarihi bilmiyorsanız yaklaşık olarak kadın için 9, erkek için 12 yaş kullanılabilir. Büluğ tarihi, doğum tarihinize bu yaş kadar yıl eklenerek hesaplanır.</div>
     <button type="button" class="link-btn" onclick="fillBaligFromBirth()">Doğum tarihinden büluğ tarihini hesapla</button>
 
     <label for="calcBalig">Büluğ tarihi (opsiyonel — biliyorsanız girin, bilmiyorsanız boş bırakın, doğum tarihi ve yaştan otomatik hesaplanır)</label>
@@ -576,9 +574,11 @@ function fillBaligFromBirth() {
     ageInput = gender === "kadin" ? 9 : 12;
     document.getElementById("calcBaligAge").value = ageInput;
   }
-  const birthDate = new Date(birth);
-  const days = Math.round(ageInput * KAMERI_YIL_GUN);
-  const balig = new Date(birthDate.getTime() + days * 86400000);
+  const wholeYears = Math.floor(ageInput);
+  const fracMonths = Math.round((ageInput - wholeYears) * 12);
+  const balig = new Date(birth);
+  balig.setFullYear(balig.getFullYear() + wholeYears);
+  balig.setMonth(balig.getMonth() + fracMonths);
   document.getElementById("calcBalig").value = fmtDate(balig);
 }
 
