@@ -60,12 +60,12 @@
     transition: width 0.3s ease;
   }
   .stats-row {
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
     gap: 10px;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
   }
   .stat-box {
-    flex: 1;
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 12px;
@@ -74,6 +74,17 @@
   }
   .stat-box .stat-val { font-size: 1rem; font-weight: 700; }
   .stat-box .stat-lbl { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
+  .last-entry {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 14px;
+    margin-bottom: 20px;
+    text-align: center;
+    font-size: 0.8rem;
+    color: var(--muted);
+  }
+  .last-entry b { color: var(--text); }
   .row {
     background: var(--card);
     border: 1px solid var(--border);
@@ -173,7 +184,7 @@
     color: var(--muted);
     margin: 12px 0 6px;
   }
-  .modal input[type="date"], .modal input[type="number"] {
+  .modal input[type="date"], .modal input[type="number"], .modal select {
     width: 100%;
     padding: 10px;
     border-radius: 8px;
@@ -182,6 +193,29 @@
     color: var(--text);
     font-size: 0.95rem;
   }
+  .modal .hint {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .modal .link-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 0.78rem;
+    cursor: pointer;
+    padding: 0;
+    margin-top: 6px;
+  }
+  .profile-summary {
+    background: #0f1419;
+    border-radius: 10px;
+    padding: 10px 12px;
+    margin-bottom: 14px;
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+  .profile-summary b { color: var(--text); }
   .modal .modal-btn {
     width: 100%;
     margin-top: 16px;
@@ -289,11 +323,13 @@
   </div>
 </div>
 
+<div class="last-entry" id="lastEntry">Henüz kaza namazı işaretlenmedi</div>
+
 <div id="list"></div>
 
 <div class="actions">
   <button class="action-btn" onclick="bulkSet()">Toplu Başlangıç Gir</button>
-  <button class="action-btn" onclick="openDateCalcModal()">Tarihe Göre Hesapla</button>
+  <button class="action-btn" onclick="openCalcModal()">Otomatik Hesapla</button>
   <button class="action-btn" onclick="openHistoryModal()">Geçmiş</button>
   <button class="action-btn" onclick="exportData()">Yedekle (Dışa Aktar)</button>
   <button class="action-btn wide" onclick="document.getElementById('importFile').click()">Geri Yükle (İçe Aktar)</button>
@@ -466,6 +502,21 @@ function render() {
   document.getElementById("totalBar").style.width = overallPct + "%";
   document.getElementById("streakVal").textContent = calcStreak() + " gün";
   document.getElementById("etaVal").textContent = estimateFinish(total);
+  renderLastEntry();
+}
+
+function renderLastEntry() {
+  const el = document.getElementById("lastEntry");
+  if (log.length === 0) {
+    el.textContent = "Henüz kaza namazı işaretlenmedi";
+    return;
+  }
+  const last = log.reduce((a, b) => (b.ts > a.ts ? b : a));
+  const ad = NAMAZLAR.find(n => n.key === last.key)?.ad || last.key;
+  const dt = new Date(last.ts);
+  const dateStr = dt.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
+  const timeStr = dt.toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+  el.innerHTML = `Son işaretlenen: <b>${ad}</b> — ${dateStr}, ${timeStr}`;
 }
 
 /* ---------- Modal helpers ---------- */
@@ -477,43 +528,103 @@ function closeModal() {
   document.getElementById("overlay").classList.remove("show");
 }
 
-/* ---------- Date-based calculation ---------- */
-function openDateCalcModal() {
+/* ---------- Büluğ/tarih tabanlı otomatik hesaplama ---------- */
+const KAMERI_YIL_GUN = 354.36;
+
+function openCalcModal() {
+  const profile = JSON.parse(localStorage.getItem("kazaProfile") || "{}");
   const todayStr = fmtDate(new Date());
   openModal(`
     <button class="close-x" onclick="closeModal()">✕</button>
-    <h2>Tarihe Göre Hesapla</h2>
-    <label for="calcStart">Kaza namazı borcunuzun başladığı tarih</label>
-    <input type="date" id="calcStart">
-    <label for="calcEnd">Kılmaya başladığınız / başlayacağınız tarih</label>
-    <input type="date" id="calcEnd" value="${todayStr}">
+    <h2>Otomatik Hesapla</h2>
+    <div class="hint">Kaza borcunuz, büluğ (dinen sorumlu olduğunuz) tarihinizden, namazlarınızı eksiksiz/aksatmadan kılmaya başladığınız tarihe kadar geçen gün sayısına göre hesaplanır.</div>
+
+    <label for="calcGender">Cinsiyet (tahmini büluğ yaşı için)</label>
+    <select id="calcGender">
+      <option value="kadin" ${profile.gender === "kadin" ? "selected" : ""}>Kadın</option>
+      <option value="erkek" ${profile.gender === "erkek" ? "selected" : ""}>Erkek</option>
+    </select>
+
+    <label for="calcBirth">Doğum tarihiniz (opsiyonel, tahmin için)</label>
+    <input type="date" id="calcBirth" value="${profile.birthDate || ""}">
+
+    <label for="calcBaligAge">Tahmini büluğ yaşı (kameri/hicri yıl)</label>
+    <input type="number" id="calcBaligAge" min="1" max="20" step="0.5" value="${profile.baligAgeYears || ""}" placeholder="Kadın: 9, Erkek: 12">
+    <div class="hint">Dini ölçüt fiziksel alametlerdir (âdet görme, ihtilam vb.); kesin tarihi bilmiyorsanız yaklaşık olarak kadın için 9, erkek için 12 kameri yıl kullanılabilir.</div>
+    <button type="button" class="link-btn" onclick="fillBaligFromBirth()">Doğum tarihinden büluğ tarihini hesapla</button>
+
+    <label for="calcBalig">Büluğ tarihi (kaza sorumluluğunun başladığı tarih)</label>
+    <input type="date" id="calcBalig" value="${profile.baligDate || ""}">
+
+    <label for="calcTamStart">Namazlarınızı eksiksiz/aksatmadan kılmaya başladığınız tarih</label>
+    <input type="date" id="calcTamStart" value="${profile.tamStart || todayStr}">
+
+    <label for="calcAlready">Bu aralıkta zaten kıldığınızı tahmin ettiğiniz gün sayısı (varsa, düşülür)</label>
+    <input type="number" id="calcAlready" min="0" value="${profile.alreadyPrayedDays || 0}">
+
     <div id="calcPreview"></div>
-    <button class="modal-btn" onclick="previewDateCalc()">Hesapla</button>
+    <button class="modal-btn" onclick="previewCalc()">Hesapla</button>
   `);
 }
 
-function previewDateCalc() {
-  const s = document.getElementById("calcStart").value;
-  const e = document.getElementById("calcEnd").value;
-  const d1 = new Date(s), d2 = new Date(e);
+function fillBaligFromBirth() {
+  const birth = document.getElementById("calcBirth").value;
+  const gender = document.getElementById("calcGender").value;
+  if (!birth) { alert("Önce doğum tarihinizi girin."); return; }
+  let ageInput = parseFloat(document.getElementById("calcBaligAge").value);
+  if (!ageInput || isNaN(ageInput)) {
+    ageInput = gender === "kadin" ? 9 : 12;
+    document.getElementById("calcBaligAge").value = ageInput;
+  }
+  const birthDate = new Date(birth);
+  const days = Math.round(ageInput * KAMERI_YIL_GUN);
+  const balig = new Date(birthDate.getTime() + days * 86400000);
+  document.getElementById("calcBalig").value = fmtDate(balig);
+}
+
+function previewCalc() {
+  const gender = document.getElementById("calcGender").value;
+  const birth = document.getElementById("calcBirth").value;
+  const baligAgeYears = parseFloat(document.getElementById("calcBaligAge").value) || null;
+  const baligStr = document.getElementById("calcBalig").value;
+  const tamStr = document.getElementById("calcTamStart").value;
+  const already = parseInt(document.getElementById("calcAlready").value) || 0;
   const preview = document.getElementById("calcPreview");
-  if (!s || !e || isNaN(d1) || isNaN(d2) || d2 <= d1) {
-    preview.innerHTML = `<div class="preview-box">Lütfen geçerli iki tarih girin (bitiş, başlangıçtan sonra olmalı).</div>`;
+
+  if (!baligStr || !tamStr) {
+    preview.innerHTML = `<div class="preview-box">Lütfen en azından büluğ tarihini ve eksiksiz namaza başladığınız tarihi girin.</div>`;
+    return;
+  }
+  const d1 = new Date(baligStr), d2 = new Date(tamStr);
+  if (isNaN(d1) || isNaN(d2) || d2 <= d1) {
+    preview.innerHTML = `<div class="preview-box">Eksiksiz namaza başlama tarihi, büluğ tarihinden sonra olmalı.</div>`;
     return;
   }
   const diffDays = Math.round((d2 - d1) / 86400000);
+  const totalDays = Math.max(0, diffDays - already);
+
+  window._calcProfile = { gender, birthDate: birth, baligAgeYears, baligDate: baligStr, tamStart: tamStr, alreadyPrayedDays: already };
+  window._calcTotalDays = totalDays;
+
   preview.innerHTML = `
-    <div class="preview-box">Her vakit için <b>${diffDays}</b> kaza namazı hesaplandı.<br>(${diffDays} gün × her vakitten 1)</div>
-    <button class="modal-btn" onclick="applyDateCalc(${diffDays})">Bu Değerleri Uygula</button>
+    <div class="preview-box">
+      Büluğ tarihinizden eksiksiz namaza başladığınız tarihe kadar <b>${diffDays}</b> gün geçmiş.
+      ${already ? `${already} gün zaten kılındığı varsayılarak düşüldü.<br>` : ""}
+      Her vakit için <b>${totalDays}</b> kaza namazı hesaplandı (vitir dahil).
+    </div>
+    <button class="modal-btn" onclick="applyCalc()">Bu Değerleri Uygula</button>
     <button class="modal-btn secondary" onclick="closeModal()">Vazgeç</button>
   `;
 }
 
-function applyDateCalc(diffDays) {
+function applyCalc() {
+  const totalDays = window._calcTotalDays;
+  if (totalDays == null) return;
   if (data && Object.values(data).some(v => v > 0)) {
     if (!confirm("Mevcut kaza sayılarınızın üzerine yazılacak. Devam edilsin mi?")) return;
   }
-  NAMAZLAR.forEach(n => { data[n.key] = diffDays; startData[n.key] = diffDays; });
+  NAMAZLAR.forEach(n => { data[n.key] = totalDays; startData[n.key] = totalDays; });
+  localStorage.setItem("kazaProfile", JSON.stringify(window._calcProfile));
   saveAll();
   closeModal();
 }
