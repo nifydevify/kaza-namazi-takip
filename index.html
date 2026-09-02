@@ -448,6 +448,7 @@ function bulkSet() {
   const n = parseInt(val);
   if (!isNaN(n) && n >= 0) {
     NAMAZLAR.forEach(x => { data[x.key] = n; startData[x.key] = n; });
+    localStorage.setItem("kazaMilestone", "0");
     saveAll();
   }
 }
@@ -720,6 +721,7 @@ function applyCalc() {
   }
   NAMAZLAR.forEach(n => { data[n.key] = totalDays; startData[n.key] = totalDays; });
   localStorage.setItem("kazaProfile", JSON.stringify(window._calcProfile));
+  localStorage.setItem("kazaMilestone", "0");
   saveAll();
   closeModal();
 }
@@ -764,13 +766,22 @@ function deleteLogDay(date) {
   const entries = log.filter(l => l.date === date);
   entries.forEach(e => { data[e.key] = (data[e.key] || 0) + e.amount; });
   log = log.filter(l => l.date !== date);
+  syncStart();
   saveAll();
   openHistoryModal();
 }
 
 /* ---------- Backup / Restore ---------- */
 function exportData() {
-  const payload = { data, startData, log, exportedAt: new Date().toISOString() };
+  const payload = {
+    data,
+    startData,
+    log,
+    lastChange,
+    profile: JSON.parse(localStorage.getItem("kazaProfile") || "null"),
+    milestone: parseInt(localStorage.getItem("kazaMilestone") || "0"),
+    exportedAt: new Date().toISOString(),
+  };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -797,6 +808,13 @@ function importData(event) {
         startData[n.key] = parsed.startData[n.key] || data[n.key];
       });
       log = Array.isArray(parsed.log) ? parsed.log : [];
+      lastChange = parsed.lastChange || null;
+      if (parsed.profile) {
+        localStorage.setItem("kazaProfile", JSON.stringify(parsed.profile));
+      } else {
+        localStorage.removeItem("kazaProfile");
+      }
+      localStorage.setItem("kazaMilestone", String(parsed.milestone || 0));
       saveAll();
       alert("Yedek başarıyla geri yüklendi.");
     } catch (err) {
