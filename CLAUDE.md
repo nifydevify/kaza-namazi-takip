@@ -7,32 +7,80 @@ Bu dosya, bu depoda çalışırken Claude Code'a rehberlik eder.
 Kaza Namazı Takip, kullanıcının kaza (kılınmamış) namazlarını vakitlere göre
 takip etmesini sağlayan, tek sayfalık, framework içermeyen bir web
 uygulamasıdır. Kullanıcı her vakit için kalan kaza sayısını girer, kıldıkça
-sayacı azaltır.
+sayacı azaltır; ayrıca büluğ tarihine dayalı otomatik hesaplama, ilerleme
+istatistikleri, geçmiş kayıt ve JSON yedekleme gibi özellikler sunar.
 
 ## Mimari
 
 - **Tek dosya**: Tüm uygulama `index.html` içinde yaşar (HTML + CSS + vanilla
   JS, tek `<script>` bloğu içinde). Build adımı, paket yöneticisi veya
   framework yoktur.
-- **Veri saklama**: Durum tamamen tarayıcının `localStorage`'ında
-  `kazaData` anahtarı altında JSON olarak tutulur. Sunucu tarafı veya ağ
-  isteği yoktur.
+- **Veri saklama**: Durum tamamen tarayıcının `localStorage`'ında saklanır,
+  birbirine bağlı birden fazla anahtar altında:
+  - `kazaData` — her vakit için **kalan** kaza sayısı (`data`)
+  - `kazaStart` — her vakit için **başlangıç/taban** sayısı (`startData`);
+    ilerleme yüzdesi `(startData - data) / startData` olarak hesaplanır
+  - `kazaLog` — kılınan her kaza için `{id, date, key, amount, ts}` girişleri
+    (streak, tahmini bitiş ve Geçmiş ekranı bunlardan türetilir)
+  - `kazaLastChange` — `{key, ts}`, en son hangi vaktin değiştiği (satır
+    vurgusu ve saniyeye kadar zaman gösterimi için)
+  - `kazaProfile` — "Otomatik Hesapla" modalına girilen değerler (doğum
+    tarihi, cinsiyet, büluğ tarihi, eksiksiz namaza başlama tarihi vb.),
+    modal her açıldığında geri doldurulur
+  - `kazaMilestone` — en son kutlanan 50'lik ilerleme eşiği
+  - Sunucu tarafı veya ağ isteği yoktur; her şey `saveAll()` üzerinden
+    localStorage'a yazılır.
+- **Değişmez kural — `startData[key] >= data[key]`**: İlerleme yüzdesi bu
+  varsayıma dayanır. `data[key]`'i artıran (kalan sayıyı yükselten) **her**
+  işlemden sonra `syncStart()` çağrılmalıdır (`change()`, `editCount()`,
+  `applyBulkPerform()`, `deleteLogDay()` içinde olduğu gibi) — aksi halde
+  yüzde hesabı eksiye düşebilir. `bulkSet()` ve `applyCalc()` ise
+  `data`/`startData`'yı aynı anda aynı değere sıfırladığı için ayrıca
+  `syncStart()` gerektirmez.
+- **"+"/"−" buton anlamı (kasıtlı, sezgisel isim değil)**: "+" tuşu
+  **"kıldım"** anlamına gelir (kalan sayıyı azaltır, log'a işler); "−" tuşu
+  **geri alma/düzeltme** içindir (kalan sayıyı artırır). Bu, kullanıcı
+  isteğiyle kasıtlı olarak tersine çevrildi (yeşil "+" = olumlu eylem) —
+  standart artı/eksi sezgisiyle karıştırıp geri çevirmeyin.
 - **Vakitler**: `NAMAZLAR` dizisi altı sabit vakti tanımlar: sabah, öğle,
-  ikindi, akşam, yatsı, vitir (`index.html` içinde ~satır 112). Yeni bir
-  vakit eklemek/çıkarmak gerekirse sadece bu diziyi güncellemek yeterlidir;
-  render mantığı diziye göre otomatik çalışır.
-- **Render döngüsü**: Her veri değişikliğinden sonra `save()` çağrılır, o da
-  `localStorage`'ı günceller ve `render()`'ı tetikler. `render()` DOM'u
-  sıfırdan yeniden oluşturur (satır ~143). Küçük ölçek için bu yaklaşım
-  yeterlidir; performans optimizasyonuna gerek yok.
+  ikindi, akşam, yatsı, vitir. Yeni bir vakit eklemek/çıkarmak gerekirse
+  sadece bu diziyi güncellemek yeterlidir; render mantığı diziye göre
+  otomatik çalışır.
+- **Render döngüsü**: Hemen hemen her mutasyon fonksiyonu sonunda
+  `saveAll()` çağrılır; o da localStorage'a yazar, `checkMilestone()`'ı
+  çalıştırır ve `render()`'ı tetikler. `render()` `#list` DOM'unu sıfırdan
+  yeniden oluşturur; küçük ölçek için bu yaklaşım yeterlidir.
+- **Tarih ayrıştırma**: `<input type="date">` değerleri (`"YYYY-MM-DD"`)
+  asla çıplak `new Date(str)` ile ayrıştırılmaz — bu, UTC gece yarısı
+  varsayar ve sonradan yerel `getFullYear`/`setFullYear` gibi metodlarla
+  karıştırılırsa negatif UTC farklı saat dilimlerinde tarih bir gün kayar.
+  Bunun yerine `parseLocalDate(str)` kullanılır (yerel gece yarısı olarak
+  ayrıştırır, `fmtDate()` ile simetriktir). Tarih girişi ayrıştıran yeni kod
+  eklerken de `parseLocalDate` kullanın, çıplak `new Date(dateInputValue)`
+  değil.
+- **Yedekleme bütünlüğü**: `exportData()`/`importData()` yukarıdaki *tüm*
+  localStorage anahtarlarını (data, startData, log, lastChange, profile,
+  milestone) kapsar. Yeni bir kalıcı durum (yeni bir localStorage anahtarı)
+  eklerseniz, onu da bu ikisine ekleyin — aksi halde kullanıcı yedeği başka
+  bir cihaza geri yüklediğinde o veri sessizce kaybolur.
 
 ## Geliştirme
 
 - Kurulum veya build gerekmez. `index.html` dosyasını doğrudan tarayıcıda
   açarak veya basit bir statik sunucu ile (`python3 -m http.server`)
   test edin.
-- Test framework'ü yoktur. Değişiklikleri tarayıcıda manuel olarak,
-  localStorage değerlerini de kontrol ederek doğrulayın.
+- Test framework'ü yoktur. Bu ortamda (sandbox) headless Chromium/Playwright
+  çalıştırmak için gereken sistem kütüphaneleri (örn. `libnspr4.so`) eksik
+  ve `sudo` yok — gerçek bir tarayıcıda ekran görüntüsü almak mümkün
+  olmayabilir. Bunun yerine `jsdom` (scratchpad dizinine `npm install
+  jsdom` ile kurulabilir) kullanarak sayfayı yükleyip `dispatchEvent` ile
+  buton tıklamalarını, modal açma/kapamayı ve `localStorage`/DOM sonuçlarını
+  doğrulayın. Bkz. bu depoda daha önce yazılmış `scratchpad/test*.js`
+  betikleri (geçici dizindedir, kalıcı değildir) örnek olarak.
+- Mantık değişikliklerinden sonra en azından şunları test edin: ilerleme
+  yüzdesinin hiçbir senaryoda negatife düşmediğini, `syncStart()`'ın
+  gerektiği her yerde çağrıldığını ve yedekleme dışa/içe aktarmanın tüm
+  localStorage anahtarlarını round-trip ettiğini.
 
 ## Kod Stili ve Kurallar
 
@@ -43,7 +91,15 @@ sayacı azaltır.
   eklemeden önce gerçekten gerekli olup olmadığını değerlendir. Proje
   bilinçli olarak sıfır bağımlılıklı tutulmaktadır.
 - Var olan CSS custom property'lerini (`--bg`, `--accent`, `--accent2`,
-  `--text`, `--muted`, `--border`, `--card`) kullanarak tema tutarlılığını
-  koru.
+  `--text`, `--muted`, `--border`, `--card`, `--gold`) kullanarak tema
+  tutarlılığını koru.
+- Sayfa düzeni kasıtlı olarak kompakt tutulur: başlık → son işaretlenen
+  bandı → 6 vakit satırı → toplam/seri/tahmini bitiş paneli → eylem
+  butonları → footer. Vakit satırlarının ilk ekranda (kaydırmadan) görünür
+  olması öncelikli tutuldu; özet panelleri kasıtlı olarak listenin altına
+  taşındı. Boyutlar kullanıcı geri bildirimiyle birkaç kez büyütüldü —
+  yeniden küçültmeden önce mevcut `<style>` bloğundaki değerleri kontrol
+  edin, eski (küçük) değerleri varsaymayın.
 - Gereksiz soyutlama veya yorum ekleme; kod zaten küçük ve okunabilir
-  durumda.
+  durumda. Yorum yalnızca WHY açık olmadığında (örn. tarih ayrıştırma
+  tuzağı, `syncStart()` çağrı sırası) eklenir.

@@ -396,6 +396,15 @@ function fmtDate(d) {
   return `${y}-${m}-${day}`;
 }
 
+// <input type="date"> değerlerini (YYYY-MM-DD) yerel saatte gece yarısı olarak
+// ayrıştırır. `new Date("YYYY-MM-DD")` bunu UTC gece yarısı sayar; sonradan
+// yerel getter/setter'larla (fmtDate, setFullYear, setMonth) karıştırılırsa
+// negatif UTC farkına sahip saat dilimlerinde tarih bir gün kayabilir.
+function parseLocalDate(str) {
+  const [y, m, d] = str.split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
 function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
@@ -663,7 +672,7 @@ function fillBaligFromBirth() {
   }
   const wholeYears = Math.floor(ageInput);
   const fracMonths = Math.round((ageInput - wholeYears) * 12);
-  const balig = new Date(birth);
+  const balig = parseLocalDate(birth);
   balig.setFullYear(balig.getFullYear() + wholeYears);
   balig.setMonth(balig.getMonth() + fracMonths);
   document.getElementById("calcBalig").value = fmtDate(balig);
@@ -691,7 +700,7 @@ function previewCalc() {
     preview.innerHTML = `<div class="preview-box">Lütfen büluğ tarihini doğrudan girin, veya doğum tarihinizi girin ki tahmini yaşa göre otomatik hesaplansın.</div>`;
     return;
   }
-  const d1 = new Date(baligStr), d2 = new Date(tamStr);
+  const d1 = parseLocalDate(baligStr), d2 = parseLocalDate(tamStr);
   if (isNaN(d1) || isNaN(d2) || d2 <= d1) {
     preview.innerHTML = `<div class="preview-box">Eksiksiz namaza başlama tarihi, büluğ tarihinden sonra olmalı.</div>`;
     return;
