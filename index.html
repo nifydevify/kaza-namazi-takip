@@ -90,6 +90,7 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+    margin-bottom: 6px;
   }
   .row {
     background: var(--card);
@@ -330,6 +331,10 @@
 <h1>Kaza Namazı Takip</h1>
 <div class="subtitle">Her vakit için kalan kaza sayısını gir, kıldıkça azalt</div>
 
+<div class="last-entry" id="lastEntry">Henüz kaza namazı işaretlenmedi</div>
+
+<div id="list"></div>
+
 <div class="total-card">
   <div class="num" id="totalRemaining">0</div>
   <div class="lbl">Toplam Kalan Kaza</div>
@@ -347,10 +352,6 @@
     <div class="stat-lbl">Tahmini bitiş</div>
   </div>
 </div>
-
-<div class="last-entry" id="lastEntry">Henüz kaza namazı işaretlenmedi</div>
-
-<div id="list"></div>
 
 <div class="actions">
   <button class="action-btn" onclick="openBulkPerformModal()">Toplu Kılındı</button>
