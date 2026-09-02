@@ -13,6 +13,7 @@
     --text: #e8eaed;
     --muted: #8b96a3;
     --border: #2c3540;
+    --gold: #e9c46a;
   }
   * { box-sizing: border-box; }
   body {
@@ -40,16 +41,47 @@
     border-radius: 14px;
     padding: 18px;
     text-align: center;
-    margin-bottom: 20px;
+    margin-bottom: 12px;
   }
   .total-card .num { font-size: 2.2rem; font-weight: 700; }
   .total-card .lbl { font-size: 0.8rem; opacity: 0.9; }
+  .total-card .percent { font-size: 0.85rem; opacity: 0.95; margin-top: 6px; }
+  .total-card .bar-track {
+    background: rgba(0,0,0,0.25);
+    border-radius: 6px;
+    height: 8px;
+    margin-top: 8px;
+    overflow: hidden;
+  }
+  .total-card .bar-fill {
+    background: var(--gold);
+    height: 100%;
+    border-radius: 6px;
+    transition: width 0.3s ease;
+  }
+  .stats-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+  .stat-box {
+    flex: 1;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 12px;
+    text-align: center;
+  }
+  .stat-box .stat-val { font-size: 1rem; font-weight: 700; }
+  .stat-box .stat-lbl { font-size: 0.7rem; color: var(--muted); margin-top: 2px; }
   .row {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: 12px;
     padding: 14px 16px;
     margin-bottom: 10px;
+  }
+  .row-top {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -67,28 +99,170 @@
   }
   .btn-minus { background: #3a2a2a; color: var(--accent2); }
   .btn-plus { background: #223a36; color: var(--accent); }
+  .btn-edit { background: #2a2a3a; color: var(--gold); font-size: 0.9rem; }
   .val {
     min-width: 32px;
     text-align: center;
     font-weight: 700;
     font-size: 1.1rem;
   }
-  .set-target {
-    width: 100%;
+  .row-bar-track {
+    background: #0f1419;
+    border-radius: 5px;
+    height: 6px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .row-bar-fill {
+    background: var(--accent);
+    height: 100%;
+    border-radius: 5px;
+    transition: width 0.3s ease;
+  }
+  .actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .action-btn {
     background: none;
     border: 1px dashed var(--border);
     color: var(--muted);
     border-radius: 10px;
     padding: 10px;
-    font-size: 0.85rem;
+    font-size: 0.8rem;
     cursor: pointer;
-    margin-top: 6px;
   }
+  .action-btn.wide { grid-column: 1 / -1; }
   .footer {
     text-align: center;
     color: var(--muted);
     font-size: 0.75rem;
     margin-top: 24px;
+  }
+
+  /* Modal */
+  .overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    align-items: flex-end;
+    justify-content: center;
+    z-index: 50;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px 16px 0 0;
+    padding: 20px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+  .modal h2 {
+    font-size: 1.1rem;
+    margin: 0 0 14px;
+  }
+  .modal label {
+    display: block;
+    font-size: 0.8rem;
+    color: var(--muted);
+    margin: 12px 0 6px;
+  }
+  .modal input[type="date"], .modal input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: #0f1419;
+    color: var(--text);
+    font-size: 0.95rem;
+  }
+  .modal .modal-btn {
+    width: 100%;
+    margin-top: 16px;
+    padding: 12px;
+    border: none;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    font-weight: 700;
+    font-size: 0.9rem;
+    cursor: pointer;
+  }
+  .modal .modal-btn.secondary {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    margin-top: 8px;
+  }
+  .modal .close-x {
+    float: right;
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-size: 1.3rem;
+    cursor: pointer;
+  }
+  .preview-box {
+    background: #0f1419;
+    border-radius: 10px;
+    padding: 12px;
+    margin-top: 14px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-align: center;
+  }
+  .preview-box b { color: var(--text); font-size: 1.1rem; }
+
+  .history-day {
+    border-bottom: 1px solid var(--border);
+    padding: 10px 0;
+  }
+  .history-day:last-child { border-bottom: none; }
+  .history-day-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .history-date { font-weight: 600; font-size: 0.9rem; }
+  .history-total { color: var(--accent); font-size: 0.8rem; }
+  .history-detail { color: var(--muted); font-size: 0.78rem; margin-top: 4px; }
+  .history-del {
+    background: none;
+    border: none;
+    color: var(--accent2);
+    font-size: 0.75rem;
+    cursor: pointer;
+    margin-top: 6px;
+  }
+  .empty-msg { color: var(--muted); font-size: 0.85rem; text-align: center; padding: 20px 0; }
+
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    transform: translate(-50%, 20px);
+    background: var(--gold);
+    color: #1a2129;
+    padding: 12px 18px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    opacity: 0;
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 100;
+    text-align: center;
+    max-width: 90%;
+  }
+  .toast.show {
+    opacity: 1;
+    transform: translate(-50%, 0);
   }
 </style>
 </head>
@@ -100,13 +274,39 @@
 <div class="total-card">
   <div class="num" id="totalRemaining">0</div>
   <div class="lbl">Toplam Kalan Kaza</div>
+  <div class="percent" id="totalPercent">%0 tamamlandı</div>
+  <div class="bar-track"><div class="bar-fill" id="totalBar" style="width:0%"></div></div>
+</div>
+
+<div class="stats-row">
+  <div class="stat-box">
+    <div class="stat-val" id="streakVal">0 gün</div>
+    <div class="stat-lbl">Seri (streak)</div>
+  </div>
+  <div class="stat-box">
+    <div class="stat-val" id="etaVal">-</div>
+    <div class="stat-lbl">Tahmini bitiş</div>
+  </div>
 </div>
 
 <div id="list"></div>
 
-<button class="set-target" onclick="bulkSet()">Toplu Başlangıç Sayısı Gir</button>
+<div class="actions">
+  <button class="action-btn" onclick="bulkSet()">Toplu Başlangıç Gir</button>
+  <button class="action-btn" onclick="openDateCalcModal()">Tarihe Göre Hesapla</button>
+  <button class="action-btn" onclick="openHistoryModal()">Geçmiş</button>
+  <button class="action-btn" onclick="exportData()">Yedekle (Dışa Aktar)</button>
+  <button class="action-btn wide" onclick="document.getElementById('importFile').click()">Geri Yükle (İçe Aktar)</button>
+  <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
+</div>
 
 <div class="footer">Veriler bu cihazda saklanır (tarayıcı hafızası)</div>
+
+<div class="overlay" id="overlay" onclick="if(event.target===this) closeModal()">
+  <div class="modal" id="modalContent"></div>
+</div>
+
+<div class="toast" id="toast"></div>
 
 <script>
 const NAMAZLAR = [
@@ -119,49 +319,286 @@ const NAMAZLAR = [
 ];
 
 let data = JSON.parse(localStorage.getItem("kazaData") || "{}");
-NAMAZLAR.forEach(n => { if (!(n.key in data)) data[n.key] = 0; });
+let startData = JSON.parse(localStorage.getItem("kazaStart") || "{}");
+let log = JSON.parse(localStorage.getItem("kazaLog") || "[]");
 
-function save() {
+NAMAZLAR.forEach(n => {
+  if (!(n.key in data)) data[n.key] = 0;
+  if (!(n.key in startData)) startData[n.key] = data[n.key];
+});
+
+function fmtDate(d) {
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, "0"), day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function genId() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+}
+
+function syncStart() {
+  NAMAZLAR.forEach(n => {
+    startData[n.key] = Math.max(startData[n.key] || 0, data[n.key]);
+  });
+}
+
+function saveAll() {
   localStorage.setItem("kazaData", JSON.stringify(data));
+  localStorage.setItem("kazaStart", JSON.stringify(startData));
+  localStorage.setItem("kazaLog", JSON.stringify(log));
+  checkMilestone();
   render();
 }
 
 function change(key, delta) {
-  data[key] = Math.max(0, data[key] + delta);
-  save();
+  if (delta < 0) {
+    if (data[key] <= 0) return;
+    data[key] = Math.max(0, data[key] + delta);
+    log.push({ id: genId(), date: fmtDate(new Date()), key, amount: 1, ts: Date.now() });
+  } else {
+    data[key] = data[key] + delta;
+  }
+  syncStart();
+  saveAll();
+}
+
+function editCount(key, ad) {
+  const val = prompt(`${ad} için kalan kaza sayısını gir:`, data[key]);
+  const n = parseInt(val);
+  if (!isNaN(n) && n >= 0) {
+    data[key] = n;
+    syncStart();
+    saveAll();
+  }
 }
 
 function bulkSet() {
   const val = prompt("Her vakit için başlangıç kaza sayısını gir (örn: 500):");
   const n = parseInt(val);
   if (!isNaN(n) && n >= 0) {
-    NAMAZLAR.forEach(x => data[x.key] = n);
-    save();
+    NAMAZLAR.forEach(x => { data[x.key] = n; startData[x.key] = n; });
+    saveAll();
   }
+}
+
+function checkMilestone() {
+  const totalStart = NAMAZLAR.reduce((s, n) => s + (startData[n.key] || 0), 0);
+  const totalRemaining = NAMAZLAR.reduce((s, n) => s + data[n.key], 0);
+  const totalDone = totalStart - totalRemaining;
+  const lastMilestone = parseInt(localStorage.getItem("kazaMilestone") || "0");
+  const currentLevel = Math.floor(totalDone / 50) * 50;
+  if (currentLevel > lastMilestone && currentLevel > 0) {
+    localStorage.setItem("kazaMilestone", String(currentLevel));
+    showToast(`🎉 Tebrikler! ${currentLevel} kaza namazı tamamladın.`);
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => t.classList.remove("show"), 3500);
+}
+
+function calcStreak() {
+  const dates = new Set(log.map(l => l.date));
+  let cursor = new Date();
+  if (!dates.has(fmtDate(cursor))) {
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  let streak = 0;
+  while (dates.has(fmtDate(cursor))) {
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
+
+function estimateFinish(totalRemaining) {
+  if (totalRemaining <= 0) return "Tamamlandı 🎉";
+  const cutoff = new Date();
+  cutoff.setDate(cutoff.getDate() - 13);
+  const cutoffStr = fmtDate(cutoff);
+  const recent = log.filter(l => l.date >= cutoffStr);
+  if (recent.length === 0) return "Yetersiz veri";
+  const totalPerformed = recent.reduce((s, l) => s + l.amount, 0);
+  const earliestTs = Math.min(...recent.map(l => l.ts));
+  const spanDays = Math.max(1, Math.round((Date.now() - earliestTs) / 86400000) + 1);
+  const avgPerDay = totalPerformed / spanDays;
+  if (avgPerDay <= 0) return "Yetersiz veri";
+  const daysLeft = Math.ceil(totalRemaining / avgPerDay);
+  const finish = new Date();
+  finish.setDate(finish.getDate() + daysLeft);
+  return finish.toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" });
 }
 
 function render() {
   const list = document.getElementById("list");
   list.innerHTML = "";
-  let total = 0;
+  let total = 0, totalStart = 0;
   NAMAZLAR.forEach(n => {
     total += data[n.key];
+    totalStart += (startData[n.key] || 0);
+    const pct = startData[n.key] > 0 ? Math.round(((startData[n.key] - data[n.key]) / startData[n.key]) * 100) : 0;
     const row = document.createElement("div");
     row.className = "row";
     row.innerHTML = `
-      <div>
-        <div class="name">${n.ad}</div>
-        <div class="count">${data[n.key]} kaza kaldı</div>
+      <div class="row-top">
+        <div>
+          <div class="name">${n.ad}</div>
+          <div class="count">${data[n.key]} kaza kaldı</div>
+        </div>
+        <div class="btns">
+          <button class="btn-edit" onclick="editCount('${n.key}','${n.ad}')" title="Sayıyı düzenle">✎</button>
+          <button class="btn-minus" onclick="change('${n.key}', -1)">−</button>
+          <div class="val">${data[n.key]}</div>
+          <button class="btn-plus" onclick="change('${n.key}', 1)">+</button>
+        </div>
       </div>
-      <div class="btns">
-        <button class="btn-minus" onclick="change('${n.key}', -1)">−</button>
-        <div class="val">${data[n.key]}</div>
-        <button class="btn-plus" onclick="change('${n.key}', 1)">+</button>
-      </div>
+      <div class="row-bar-track"><div class="row-bar-fill" style="width:${pct}%"></div></div>
     `;
     list.appendChild(row);
   });
   document.getElementById("totalRemaining").textContent = total;
+  const overallPct = totalStart > 0 ? Math.round(((totalStart - total) / totalStart) * 100) : 0;
+  document.getElementById("totalPercent").textContent = `%${overallPct} tamamlandı`;
+  document.getElementById("totalBar").style.width = overallPct + "%";
+  document.getElementById("streakVal").textContent = calcStreak() + " gün";
+  document.getElementById("etaVal").textContent = estimateFinish(total);
+}
+
+/* ---------- Modal helpers ---------- */
+function openModal(html) {
+  document.getElementById("modalContent").innerHTML = html;
+  document.getElementById("overlay").classList.add("show");
+}
+function closeModal() {
+  document.getElementById("overlay").classList.remove("show");
+}
+
+/* ---------- Date-based calculation ---------- */
+function openDateCalcModal() {
+  const todayStr = fmtDate(new Date());
+  openModal(`
+    <button class="close-x" onclick="closeModal()">✕</button>
+    <h2>Tarihe Göre Hesapla</h2>
+    <label for="calcStart">Kaza namazı borcunuzun başladığı tarih</label>
+    <input type="date" id="calcStart">
+    <label for="calcEnd">Kılmaya başladığınız / başlayacağınız tarih</label>
+    <input type="date" id="calcEnd" value="${todayStr}">
+    <div id="calcPreview"></div>
+    <button class="modal-btn" onclick="previewDateCalc()">Hesapla</button>
+  `);
+}
+
+function previewDateCalc() {
+  const s = document.getElementById("calcStart").value;
+  const e = document.getElementById("calcEnd").value;
+  const d1 = new Date(s), d2 = new Date(e);
+  const preview = document.getElementById("calcPreview");
+  if (!s || !e || isNaN(d1) || isNaN(d2) || d2 <= d1) {
+    preview.innerHTML = `<div class="preview-box">Lütfen geçerli iki tarih girin (bitiş, başlangıçtan sonra olmalı).</div>`;
+    return;
+  }
+  const diffDays = Math.round((d2 - d1) / 86400000);
+  preview.innerHTML = `
+    <div class="preview-box">Her vakit için <b>${diffDays}</b> kaza namazı hesaplandı.<br>(${diffDays} gün × her vakitten 1)</div>
+    <button class="modal-btn" onclick="applyDateCalc(${diffDays})">Bu Değerleri Uygula</button>
+    <button class="modal-btn secondary" onclick="closeModal()">Vazgeç</button>
+  `;
+}
+
+function applyDateCalc(diffDays) {
+  if (data && Object.values(data).some(v => v > 0)) {
+    if (!confirm("Mevcut kaza sayılarınızın üzerine yazılacak. Devam edilsin mi?")) return;
+  }
+  NAMAZLAR.forEach(n => { data[n.key] = diffDays; startData[n.key] = diffDays; });
+  saveAll();
+  closeModal();
+}
+
+/* ---------- History ---------- */
+function openHistoryModal() {
+  const byDate = {};
+  log.forEach(l => {
+    if (!byDate[l.date]) byDate[l.date] = {};
+    byDate[l.date][l.key] = (byDate[l.date][l.key] || 0) + l.amount;
+  });
+  const dates = Object.keys(byDate).sort().reverse();
+  let body;
+  if (dates.length === 0) {
+    body = `<div class="empty-msg">Henüz kayıt yok. "−" butonuna bastıkça burada birikecek.</div>`;
+  } else {
+    body = dates.map(date => {
+      const entries = byDate[date];
+      const dayTotal = Object.values(entries).reduce((a, b) => a + b, 0);
+      const detail = NAMAZLAR.filter(n => entries[n.key]).map(n => `${n.ad}: ${entries[n.key]}`).join(", ");
+      return `
+        <div class="history-day">
+          <div class="history-day-top">
+            <div class="history-date">${date}</div>
+            <div class="history-total">${dayTotal} kılındı</div>
+          </div>
+          <div class="history-detail">${detail}</div>
+          <button class="history-del" onclick="deleteLogDay('${date}')">Bu günü sil ve geri al</button>
+        </div>
+      `;
+    }).join("");
+  }
+  openModal(`
+    <button class="close-x" onclick="closeModal()">✕</button>
+    <h2>Geçmiş</h2>
+    ${body}
+  `);
+}
+
+function deleteLogDay(date) {
+  if (!confirm(`${date} tarihindeki kayıtlar silinsin ve sayılar geri alınsın mı?`)) return;
+  const entries = log.filter(l => l.date === date);
+  entries.forEach(e => { data[e.key] = (data[e.key] || 0) + e.amount; });
+  log = log.filter(l => l.date !== date);
+  saveAll();
+  openHistoryModal();
+}
+
+/* ---------- Backup / Restore ---------- */
+function exportData() {
+  const payload = { data, startData, log, exportedAt: new Date().toISOString() };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `kaza-namazi-yedek-${fmtDate(new Date())}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function importData(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const parsed = JSON.parse(reader.result);
+      if (!parsed.data || !parsed.startData) throw new Error("Geçersiz dosya");
+      if (!confirm("Mevcut veriler yedek dosyasındaki verilerle değiştirilecek. Devam edilsin mi?")) return;
+      data = {}; startData = {};
+      NAMAZLAR.forEach(n => {
+        data[n.key] = parsed.data[n.key] || 0;
+        startData[n.key] = parsed.startData[n.key] || data[n.key];
+      });
+      log = Array.isArray(parsed.log) ? parsed.log : [];
+      saveAll();
+      alert("Yedek başarıyla geri yüklendi.");
+    } catch (err) {
+      alert("Dosya okunamadı: geçerli bir yedek dosyası seçin.");
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = "";
 }
 
 render();
