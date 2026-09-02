@@ -91,6 +91,16 @@
     border-radius: 12px;
     padding: 14px 16px;
     margin-bottom: 10px;
+    transition: border-color 0.3s ease, background 0.3s ease;
+  }
+  .row.last-changed {
+    border-color: var(--gold);
+    background: linear-gradient(0deg, rgba(233,196,106,0.08), rgba(233,196,106,0.08)), var(--card);
+  }
+  .row-changed-tag {
+    color: var(--gold);
+    font-size: 0.72rem;
+    margin-top: 6px;
   }
   .row-top {
     display: flex;
@@ -328,6 +338,7 @@
 <div id="list"></div>
 
 <div class="actions">
+  <button class="action-btn" onclick="openBulkPerformModal()">Toplu Kılındı Gir</button>
   <button class="action-btn" onclick="bulkSet()">Toplu Başlangıç Gir</button>
   <button class="action-btn" onclick="openCalcModal()">Otomatik Hesapla</button>
   <button class="action-btn" onclick="openHistoryModal()">Geçmiş</button>
@@ -357,6 +368,7 @@ const NAMAZLAR = [
 let data = JSON.parse(localStorage.getItem("kazaData") || "{}");
 let startData = JSON.parse(localStorage.getItem("kazaStart") || "{}");
 let log = JSON.parse(localStorage.getItem("kazaLog") || "[]");
+let lastChange = JSON.parse(localStorage.getItem("kazaLastChange") || "null");
 
 NAMAZLAR.forEach(n => {
   if (!(n.key in data)) data[n.key] = 0;
@@ -382,8 +394,13 @@ function saveAll() {
   localStorage.setItem("kazaData", JSON.stringify(data));
   localStorage.setItem("kazaStart", JSON.stringify(startData));
   localStorage.setItem("kazaLog", JSON.stringify(log));
+  localStorage.setItem("kazaLastChange", JSON.stringify(lastChange));
   checkMilestone();
   render();
+}
+
+function markChange(key) {
+  lastChange = { key, ts: Date.now() };
 }
 
 function change(key, delta) {
@@ -394,6 +411,7 @@ function change(key, delta) {
   } else {
     data[key] = data[key] + delta;
   }
+  markChange(key);
   syncStart();
   saveAll();
 }
@@ -403,6 +421,7 @@ function editCount(key, ad) {
   const n = parseInt(val);
   if (!isNaN(n) && n >= 0) {
     data[key] = n;
+    markChange(key);
     syncStart();
     saveAll();
   }
@@ -415,6 +434,44 @@ function bulkSet() {
     NAMAZLAR.forEach(x => { data[x.key] = n; startData[x.key] = n; });
     saveAll();
   }
+}
+
+/* ---------- Toplu kılındı girişi ---------- */
+function openBulkPerformModal() {
+  openModal(`
+    <button class="close-x" onclick="closeModal()">✕</button>
+    <h2>Toplu Kılındı Gir</h2>
+    <div class="hint">Kıldığınız kaza namazlarını vakit vakit girin, "Uygula" ile hepsi tek seferde işlensin.</div>
+    ${NAMAZLAR.map(n => `
+      <label for="bulkPerform_${n.key}">${n.ad} (kalan: ${data[n.key]})</label>
+      <input type="number" id="bulkPerform_${n.key}" min="0" max="${data[n.key]}" value="0">
+    `).join("")}
+    <button class="modal-btn" onclick="applyBulkPerform()">Uygula</button>
+    <button class="modal-btn secondary" onclick="closeModal()">Vazgeç</button>
+  `);
+}
+
+function applyBulkPerform() {
+  const todayStr = fmtDate(new Date());
+  const ts = Date.now();
+  let any = false;
+  let lastKey = null;
+  NAMAZLAR.forEach(n => {
+    const el = document.getElementById(`bulkPerform_${n.key}`);
+    let amount = parseInt(el.value) || 0;
+    amount = Math.max(0, Math.min(amount, data[n.key]));
+    if (amount > 0) {
+      data[n.key] -= amount;
+      log.push({ id: genId(), date: todayStr, key: n.key, amount, ts });
+      lastKey = n.key;
+      any = true;
+    }
+  });
+  if (!any) { closeModal(); return; }
+  lastChange = { key: lastKey, ts };
+  syncStart();
+  saveAll();
+  closeModal();
 }
 
 function checkMilestone() {
@@ -477,8 +534,12 @@ function render() {
     total += data[n.key];
     totalStart += (startData[n.key] || 0);
     const pct = startData[n.key] > 0 ? Math.round(((startData[n.key] - data[n.key]) / startData[n.key]) * 100) : 0;
+    const isLastChanged = lastChange && lastChange.key === n.key;
     const row = document.createElement("div");
-    row.className = "row";
+    row.className = "row" + (isLastChanged ? " last-changed" : "");
+    const changedTag = isLastChanged
+      ? `<div class="row-changed-tag">Son değişiklik: ${new Date(lastChange.ts).toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric" })}, ${new Date(lastChange.ts).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}</div>`
+      : "";
     row.innerHTML = `
       <div class="row-top">
         <div>
@@ -487,12 +548,13 @@ function render() {
         </div>
         <div class="btns">
           <button class="btn-edit" onclick="editCount('${n.key}','${n.ad}')" title="Sayıyı düzenle">✎</button>
-          <button class="btn-minus" onclick="change('${n.key}', -1)">−</button>
+          <button class="btn-minus" onclick="change('${n.key}', 1)" title="Geri al / düzelt (sayıyı 1 artır)">−</button>
           <div class="val">${data[n.key]}</div>
-          <button class="btn-plus" onclick="change('${n.key}', 1)">+</button>
+          <button class="btn-plus" onclick="change('${n.key}', -1)" title="Kıldım (sayıyı 1 azalt)">+</button>
         </div>
       </div>
       <div class="row-bar-track"><div class="row-bar-fill" style="width:${pct}%"></div></div>
+      ${changedTag}
     `;
     list.appendChild(row);
   });
