@@ -94,7 +94,12 @@ istatistikleri, geçmiş kayıt ve JSON yedekleme gibi özellikler sunar.
   **"kıldım"** anlamına gelir (kalan sayıyı azaltır, log'a işler); "−" tuşu
   **geri alma/düzeltme** içindir (kalan sayıyı artırır). Bu, kullanıcı
   isteğiyle kasıtlı olarak tersine çevrildi (yeşil "+" = olumlu eylem) —
-  standart artı/eksi sezgisiyle karıştırıp geri çevirmeyin.
+  standart artı/eksi sezgisiyle karıştırıp geri çevirmeyin. "−" ayrıca
+  `removeFromLog()` ile o vakte ait en son log kayıtlarından (LIFO) aynı
+  miktarı düşer — aksi halde "+" ile işaretleyip "−" ile geri almak,
+  kalan sayıyı doğru gösterse de log'da hayalet kayıtlar bırakır (streak,
+  Geçmiş ve 30 günlük grafik hep log'dan türediği için gerçekte olmayan
+  kılınmış namazlar gösterirdi — bir keresinde yaşanmış gerçek bir hataydı).
 - **Vakitler**: `NAMAZLAR` dizisi altı sabit vakti tanımlar: sabah, öğle,
   ikindi, akşam, yatsı, vitir. Yeni bir vakit eklemek/çıkarmak gerekirse
   sadece bu diziyi güncellemek yeterlidir; render mantığı diziye göre

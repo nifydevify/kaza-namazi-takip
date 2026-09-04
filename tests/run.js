@@ -190,6 +190,44 @@ async function testIstatistikGrafigi() {
   assert(title.includes("toplam 2 kaza kılındı"), `grafik başlığı doğru toplamı gösteriyor (görünen: "${title}")`);
 }
 
+async function testGeriAlmaLogdanDaDusuyor() {
+  const dom = loadPage();
+  const { window } = dom;
+
+  window.editCount("aksam", "Akşam");
+  window.document.getElementById("promptInput").value = "10";
+  window._promptSubmit();
+
+  window.change("aksam", -1); // kıldım
+  window.change("aksam", -1); // kıldım
+  const midLog = getLS(dom, "kazaLog");
+  assert(midLog.filter(l => l.key === "aksam").length === 2, "iki 'kıldım' iki log kaydı bıraktı");
+
+  window.change("aksam", 1); // geri al
+  window.change("aksam", 1); // geri al
+
+  const data = getLS(dom, "kazaData");
+  const log = getLS(dom, "kazaLog");
+  assert(data.aksam === 10, "geri alınca kalan sayı eski haline döndü");
+  assert(log.filter(l => l.key === "aksam").length === 0, "geri alınca log'daki hayalet kayıtlar da silindi");
+}
+
+async function testGeriAlmaFazlasiEksikGirisiKirpiyor() {
+  const dom = loadPage();
+  const { window } = dom;
+
+  window.editCount("vitir", "Vitir");
+  window.document.getElementById("promptInput").value = "5";
+  window._promptSubmit();
+
+  window.change("vitir", -1); // 1 log kaydı
+  window.change("vitir", 1); // geri al
+  window.change("vitir", 1); // fazladan geri al — log'da düşecek bir şey kalmadı, sessizce yok sayılmalı
+
+  const log = getLS(dom, "kazaLog");
+  assert(log.filter(l => l.key === "vitir").length === 0, "log'da eksi kayıt oluşmuyor, sadece var olanlar düşüyor");
+}
+
 async function main() {
   await testYuzdeHicNegatifeDusmez();
   await testSyncStartEditCountArtinca();
@@ -197,6 +235,8 @@ async function main() {
   await testGirisVaktiLogaIsleniyor();
   await testGunlukHedefRoundTrip();
   await testIstatistikGrafigi();
+  await testGeriAlmaLogdanDaDusuyor();
+  await testGeriAlmaFazlasiEksikGirisiKirpiyor();
 
   console.log(`\n${passed} test geçti, ${failed} test başarısız.`);
   process.exit(failed > 0 ? 1 : 0);
