@@ -228,6 +228,31 @@ async function testGeriAlmaFazlasiEksikGirisiKirpiyor() {
   assert(log.filter(l => l.key === "vitir").length === 0, "log'da eksi kayıt oluşmuyor, sadece var olanlar düşüyor");
 }
 
+async function testLogTemizlemeVeriyiEtkilemiyor() {
+  const dom = loadPage();
+  const { window } = dom;
+
+  window.editCount("sabah", "Sabah");
+  window.document.getElementById("promptInput").value = "20";
+  window._promptSubmit();
+  window.change("sabah", -1);
+  window.change("sabah", -1);
+
+  const dataBefore = getLS(dom, "kazaData");
+  const startBefore = getLS(dom, "kazaStart");
+  assert(dataBefore.sabah === 18, "2 kıldım sonrası kalan 18 (temizlik öncesi kontrol)");
+
+  window.clearLog();
+  window._confirmYes();
+
+  const log = getLS(dom, "kazaLog");
+  const dataAfter = getLS(dom, "kazaData");
+  const startAfter = getLS(dom, "kazaStart");
+  assert(log.length === 0, "clearLog() log'u tamamen boşalttı");
+  assert(dataAfter.sabah === dataBefore.sabah, "kalan sayı log temizlenince değişmedi");
+  assert(startAfter.sabah === startBefore.sabah, "başlangıç sayısı log temizlenince değişmedi");
+}
+
 async function main() {
   await testYuzdeHicNegatifeDusmez();
   await testSyncStartEditCountArtinca();
@@ -237,6 +262,7 @@ async function main() {
   await testIstatistikGrafigi();
   await testGeriAlmaLogdanDaDusuyor();
   await testGeriAlmaFazlasiEksikGirisiKirpiyor();
+  await testLogTemizlemeVeriyiEtkilemiyor();
 
   console.log(`\n${passed} test geçti, ${failed} test başarısız.`);
   process.exit(failed > 0 ? 1 : 0);

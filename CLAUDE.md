@@ -104,6 +104,12 @@ istatistikleri, geçmiş kayıt ve JSON yedekleme gibi özellikler sunar.
   ikindi, akşam, yatsı, vitir. Yeni bir vakit eklemek/çıkarmak gerekirse
   sadece bu diziyi güncellemek yeterlidir; render mantığı diziye göre
   otomatik çalışır.
+- **Log temizleme**: Geçmiş modalinde "Log Geçmişini Temizle" butonu
+  `clearLog()`'u çağırır — yalnızca `log`'u boşaltır, `data`/`startData`'ya
+  dokunmaz. Satır başına gösterilen "kılındı" sayısı ve ilerleme yüzdesi
+  `startData - data`'dan gelir (log'dan DEĞİL), bu yüzden log'u temizlemek
+  onları etkilemez; etkilenenler yalnızca log'dan türeyenler: streak,
+  tahmini bitiş, Geçmiş listesi, 30 günlük grafik.
 - **Render döngüsü**: Hemen hemen her mutasyon fonksiyonu sonunda
   `saveAll()` çağrılır; o da localStorage'a yazar, `checkMilestone()`'ı
   çalıştırır ve `render()`'ı tetikler. `render()` `#list` DOM'unu sıfırdan

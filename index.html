@@ -1010,7 +1010,25 @@ function openHistoryModal() {
     <h2>Geçmiş</h2>
     ${buildChartHtml()}
     ${body}
+    ${log.length > 0 ? `<button class="modal-btn secondary" onclick="clearLog()">Log Geçmişini Temizle</button>` : ""}
   `);
+}
+
+// Yalnızca kayıt izini (log) temizler; data/startData'ya (kalan/başlangıç
+// sayıları, dolayısıyla ilerleme yüzdesi) DOKUNMAZ. Etkilenenler: seri
+// (streak), tahmini bitiş, Geçmiş listesi ve 30 günlük grafik — hepsi
+// log'dan türetiliyor.
+function clearLog() {
+  showConfirm(
+    "Log Geçmişini Temizle",
+    "Kılınan kaza kayıtlarının geçmişi (Geçmiş listesi, seri, tahmini bitiş, 30 günlük grafik) sıfırlanacak. Kalan/başlangıç sayılarınız ve ilerleme yüzdeniz ETKİLENMEZ.",
+    () => {
+      log = [];
+      saveAll();
+      showToast("Log geçmişi temizlendi.");
+      closeModal();
+    }
+  );
 }
 
 function deleteLogDay(date) {
