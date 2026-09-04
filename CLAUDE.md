@@ -23,7 +23,12 @@ istatistikleri, geçmiş kayıt ve JSON yedekleme gibi özellikler sunar.
   network-first + cache fallback stratejisi kullanır; önbelleği
   güncellemek (örn. yeni bir statik dosya eklendiğinde) için `sw.js`
   içindeki `CACHE_NAME` değerini artırın — aksi halde kullanıcılar eski
-  önbellekten servis edilmeye devam edebilir.
+  önbellekten servis edilmeye devam edebilir. `fetch` handler'ı yalnızca
+  AYNI ORIGIN isteklerine karışır (`new URL(req.url).origin !==
+  self.location.origin` ise dokunmadan geçer) — Firebase Auth/Firestore/
+  gstatic gibi üçüncü taraf isteklerini önbelleğe almaya çalışmamak ve
+  çevrimdışıyken onlara yanlışlıkla `index.html` içeriğini "yanıt" olarak
+  döndürmemek için (bir keresinde tam olarak bu bulunmuş bir hataydı).
 - **Veri saklama**: Durum tamamen tarayıcının `localStorage`'ında saklanır,
   birbirine bağlı birden fazla anahtar altında:
   - `kazaData` — her vakit için **kalan** kaza sayısı (`data`)

@@ -1275,8 +1275,22 @@ if ("serviceWorker" in navigator) {
   // sıfırlanmış hal zaman olarak daha yeni görünür ama kullanıcının asıl
   // istediği veri değildir). Bu yüzden içerik farklıysa ASLA sessizce
   // birini seçmeyip kullanıcıya soruyoruz (bkz. showSyncConflictModal).
+  //
+  // Karşılaştırma alan sırasından bağımsız (stableStringify obje
+  // anahtarlarını sıralar): Firestore map alanlarının sırasını garanti
+  // ETMEZ, düz JSON.stringify kullansaydık içerik birebir aynı olsa bile
+  // yalnızca alan sırası farklı diye yanlışlıkla "çakışma var" deyip
+  // gereksiz yere kullanıcıya sorardık.
+  function stableStringify(value) {
+    if (Array.isArray(value)) return "[" + value.map(stableStringify).join(",") + "]";
+    if (value && typeof value === "object") {
+      return "{" + Object.keys(value).sort().map(k => JSON.stringify(k) + ":" + stableStringify(value[k])).join(",") + "}";
+    }
+    return JSON.stringify(value);
+  }
+
   function payloadContent(p) {
-    return JSON.stringify({
+    return stableStringify({
       data: p.data || {}, startData: p.startData || {}, log: p.log || [],
       lastChange: p.lastChange || null, profile: p.profile || null,
       milestone: p.milestone || 0, goal: p.goal || 0,
