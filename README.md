@@ -14,6 +14,9 @@ tek sayfalık bir web uygulaması.
 - Veriler yalnızca kendi cihazınızda, tarayıcı hafızasında (`localStorage`)
   saklanır — hesap veya internet bağlantısı gerekmez
 - PWA desteği: telefonda "ana ekrana ekle" ile kurulabilir, offline çalışır
+- Google ile giriş yapılırsa veriler Firebase üzerinden cihazlar arası
+  otomatik senkronlanır (opsiyonel; giriş yapılmazsa her şey yalnızca
+  cihazda kalmaya devam eder)
 
 ## Kullanım
 

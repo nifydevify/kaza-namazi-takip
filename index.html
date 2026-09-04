@@ -187,6 +187,33 @@
     font-size: 0.88rem;
     margin-top: 14px;
   }
+  .sync-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 16px;
+    margin-top: 12px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  .sync-bar b { color: var(--text); }
+  .sync-bar button {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+  .sync-bar button.secondary {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
 
   /* Modal */
   .overlay {
@@ -398,7 +425,9 @@
   <input type="file" id="importFile" accept="application/json" style="display:none" onchange="importData(event)">
 </div>
 
-<div class="footer">Veriler bu cihazda saklanır (tarayıcı hafızası)</div>
+<div class="sync-bar" id="syncBar">Bulut senkronizasyonu yükleniyor…</div>
+
+<div class="footer">Veriler bu cihazda saklanır (tarayıcı hafızası); Google ile giriş yapılırsa ayrıca buluta senkronlanır</div>
 
 <div class="overlay" id="overlay" onclick="if(event.target===this) closeModal()">
   <div class="modal" id="modalContent"></div>
@@ -472,6 +501,26 @@ function saveAll() {
   localStorage.setItem("kazaLastChange", JSON.stringify(lastChange));
   localStorage.setItem("kazaGoal", String(goal));
   checkMilestone();
+  render();
+  // Google ile giriş yapılmışsa bulut senkron modülüne haber ver (aşağıdaki
+  // <script type="module"> bloğu tanımlar; giriş yapılmamışsa tanımsızdır).
+  if (window.__onLocalSave) window.__onLocalSave();
+}
+
+// Bulut senkron modülü uzaktan (başka bir cihazdan) daha yeni veri
+// bulduğunda localStorage'ı doğrudan günceller ve bunu çağırır: modüldeki
+// state'i (data/startData/log/lastChange/goal) yeniden okuyup ekranı
+// tazeler. saveAll()'dan FARKLIDIR — tekrar buluta yazıp döngü yaratmaz.
+function reloadStateFromStorage() {
+  data = JSON.parse(localStorage.getItem("kazaData") || "{}");
+  startData = JSON.parse(localStorage.getItem("kazaStart") || "{}");
+  log = JSON.parse(localStorage.getItem("kazaLog") || "[]");
+  lastChange = JSON.parse(localStorage.getItem("kazaLastChange") || "null");
+  goal = parseInt(localStorage.getItem("kazaGoal") || "0") || 0;
+  NAMAZLAR.forEach(n => {
+    if (!(n.key in data)) data[n.key] = 0;
+    if (!(n.key in startData)) startData[n.key] = data[n.key];
+  });
   render();
 }
 
@@ -1008,6 +1057,143 @@ if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   });
 }
+</script>
+
+<script type="module">
+  // Google ile giriş yapıldığında cihazlar arası senkronizasyon.
+  // Ana <script> bloğundan bağımsız çalışır (o klasik/module olmayan bir
+  // script); burada tanımlanan fonksiyonlar window'a asılıp yukarıdaki
+  // saveAll()/reloadStateFromStorage() ile köprü kurar. Firebase config
+  // client-side'da public olması beklenen bir değerdir — gerçek güvenlik
+  // firestore.rules (yalnızca sahibi kendi belgesine erişebilir) ile
+  // sağlanır.
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
+  } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+  import {
+    getFirestore, enableIndexedDbPersistence, doc, getDoc, setDoc, onSnapshot,
+  } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyAjJJzqZjgv0dWxAIzfF_gt-FSXGfzP9fE",
+    authDomain: "kaza-namazi-takip-8057a.firebaseapp.com",
+    projectId: "kaza-namazi-takip-8057a",
+    storageBucket: "kaza-namazi-takip-8057a.firebasestorage.app",
+    messagingSenderId: "1036427180940",
+    appId: "1:1036427180940:web:901f465d73e751b76474a9",
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const auth = getAuth(app);
+  const db = getFirestore(app);
+  const provider = new GoogleAuthProvider();
+  enableIndexedDbPersistence(db).catch(() => {}); // birden fazla sekme açıksa sessizce yok say
+
+  let unsubscribeSnapshot = null;
+
+  function localUpdatedAt() {
+    return parseInt(localStorage.getItem("kazaUpdatedAt") || "0");
+  }
+  function touchUpdatedAt() {
+    localStorage.setItem("kazaUpdatedAt", String(Date.now()));
+  }
+
+  function buildCloudPayload() {
+    return {
+      data: JSON.parse(localStorage.getItem("kazaData") || "{}"),
+      startData: JSON.parse(localStorage.getItem("kazaStart") || "{}"),
+      log: JSON.parse(localStorage.getItem("kazaLog") || "[]"),
+      lastChange: JSON.parse(localStorage.getItem("kazaLastChange") || "null"),
+      profile: JSON.parse(localStorage.getItem("kazaProfile") || "null"),
+      milestone: parseInt(localStorage.getItem("kazaMilestone") || "0"),
+      goal: parseInt(localStorage.getItem("kazaGoal") || "0"),
+      updatedAt: localUpdatedAt() || Date.now(),
+    };
+  }
+
+  function applyCloudPayload(cloud) {
+    localStorage.setItem("kazaData", JSON.stringify(cloud.data || {}));
+    localStorage.setItem("kazaStart", JSON.stringify(cloud.startData || {}));
+    localStorage.setItem("kazaLog", JSON.stringify(cloud.log || []));
+    localStorage.setItem("kazaLastChange", JSON.stringify(cloud.lastChange || null));
+    if (cloud.profile) localStorage.setItem("kazaProfile", JSON.stringify(cloud.profile));
+    else localStorage.removeItem("kazaProfile");
+    localStorage.setItem("kazaMilestone", String(cloud.milestone || 0));
+    localStorage.setItem("kazaGoal", String(cloud.goal || 0));
+    localStorage.setItem("kazaUpdatedAt", String(cloud.updatedAt || Date.now()));
+    window.reloadStateFromStorage();
+  }
+
+  function setSyncBar(html) {
+    const el = document.getElementById("syncBar");
+    if (el) el.innerHTML = html;
+  }
+
+  function renderSignedOut() {
+    setSyncBar(`
+      Cihazlar arası senkronizasyon için Google ile giriş yap.<br>
+      <button onclick="window.__firebaseSignIn()">Google ile Giriş Yap</button>
+    `);
+  }
+
+  function renderSignedIn(user) {
+    setSyncBar(`
+      Senkron: <b>${user.email}</b><br>
+      <button class="secondary" onclick="window.__firebaseSignOut()">Çıkış Yap</button>
+    `);
+  }
+
+  async function handleSignedIn(user) {
+    renderSignedIn(user);
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, buildCloudPayload());
+    } else {
+      const cloud = snap.data();
+      const lu = localUpdatedAt();
+      const cu = cloud.updatedAt || 0;
+      if (cu > lu) {
+        applyCloudPayload(cloud);
+      } else if (lu > cu) {
+        await setDoc(ref, buildCloudPayload());
+      }
+    }
+    if (unsubscribeSnapshot) unsubscribeSnapshot();
+    unsubscribeSnapshot = onSnapshot(ref, (snap2) => {
+      if (!snap2.exists()) return;
+      const cloud = snap2.data();
+      if ((cloud.updatedAt || 0) > localUpdatedAt()) {
+        applyCloudPayload(cloud);
+      }
+    });
+  }
+
+  onAuthStateChanged(auth, (user) => {
+    if (user) {
+      handleSignedIn(user);
+    } else {
+      if (unsubscribeSnapshot) { unsubscribeSnapshot(); unsubscribeSnapshot = null; }
+      renderSignedOut();
+    }
+  });
+
+  window.__firebaseSignIn = () => {
+    signInWithPopup(auth, provider).catch((err) => {
+      if (window.showToast) window.showToast("Giriş başarısız: " + err.message);
+    });
+  };
+  window.__firebaseSignOut = () => signOut(auth);
+
+  // Ana script'teki saveAll() her çağrıldığında (yani her yerel değişiklikte)
+  // bunu çağırır; giriş yapılmışsa değişikliği buluta yazar.
+  window.__onLocalSave = () => {
+    touchUpdatedAt();
+    const user = auth.currentUser;
+    if (!user) return;
+    setDoc(doc(db, "users", user.uid), buildCloudPayload()).catch(() => {});
+  };
 </script>
 
 </body>

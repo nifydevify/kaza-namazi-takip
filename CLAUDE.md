@@ -44,8 +44,30 @@ istatistikleri, geçmiş kayıt ve JSON yedekleme gibi özellikler sunar.
   - `kazaGoal` — günlük hedef (`goal`), toplam vakit bağımsız tek bir sayı;
     0 ise hedef kapalı demektir. Stats satırındaki üçüncü kutuda
     ("Bugün kılınan") gösterilir, kutuya dokununca `setGoal()` açılır.
-  - Sunucu tarafı veya ağ isteği yoktur; her şey `saveAll()` üzerinden
-    localStorage'a yazılır.
+  - `kazaUpdatedAt` — yerel state'in en son ne zaman değiştiğini tutan bir
+    epoch-ms damgası; yalnızca bulut senkron modülü tarafından kullanılır
+    (bkz. aşağıdaki "Bulut senkronizasyonu" maddesi), yedekleme dosyasına
+    dahil edilmez.
+  - Sunucu tarafı veya ağ isteği yoktur (bulut senkron modülü hariç); her
+    şey `saveAll()` üzerinden localStorage'a yazılır.
+- **Bulut senkronizasyonu (opsiyonel)**: `index.html` sonunda ayrı bir
+  `<script type="module">` bloğu, Google girişi yapan kullanıcılar için
+  Firebase Auth + Firestore üzerinden cihazlar arası senkron sağlar. Bu
+  blok ana (module olmayan) script'ten bağımsızdır; köprü iki noktadan
+  kurulur: `saveAll()` sonunda `window.__onLocalSave?.()` çağrılır (yerel
+  değişikliği buluta iter), uzaktan gelen değişiklik `applyCloudPayload()`
+  → `reloadStateFromStorage()` (yalnızca localStorage'ı okuyup `render()`
+  çağırır, tekrar buluta yazmaz — döngü olmasın diye `saveAll()` DEĞİL bu
+  çağrılır) ile yerel duruma yansır. Çakışma çözümü basit "son yazan
+  kazanır": her iki tarafta da `updatedAt` (epoch ms) karşılaştırılır.
+  Firebase config (apiKey vb.) bilerek client-side'da public'tir — gerçek
+  erişim kontrolü `firestore.rules` ile sağlanır (her kullanıcı yalnızca
+  `users/{kendi uid'si}` belgesine erişebilir). Bu proje Firebase CLI ile
+  deploy edilmiyor (build adımı yok, sıfır bağımlılık ilkesi korunuyor);
+  `firestore.rules` sadece referans, Firebase Console'a elle
+  yapıştırılmalı. Yeni bir kalıcı localStorage anahtarı eklerseniz
+  `buildCloudPayload()`/`applyCloudPayload()`'a da eklemeyi unutmayın —
+  aksi halde o alan cihazlar arasında senkronlanmaz.
 - **Değişmez kural — `startData[key] >= data[key]`**: İlerleme yüzdesi bu
   varsayıma dayanır. `data[key]`'i artıran (kalan sayıyı yükselten) **her**
   işlemden sonra `syncStart()` çağrılmalıdır (`change()`, `editCount()`,

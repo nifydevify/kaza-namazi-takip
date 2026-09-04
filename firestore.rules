@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Her kullanıcı yalnızca kendi belgesini (users/{kendi uid'si}) okuyup
+    // yazabilir. Bu proje Firebase CLI ile deploy edilmiyor (build adımı
+    // yok) — bu dosya sadece referans; Firebase Console > Firestore
+    // Database > Rules sekmesine elle yapıştırılıp "Publish" edilmelidir.
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
