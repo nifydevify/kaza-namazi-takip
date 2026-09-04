@@ -187,6 +187,16 @@
     font-size: 0.88rem;
     margin-top: 14px;
   }
+  .refresh-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    margin-top: 8px;
+  }
   .sync-bar {
     background: var(--card);
     border: 1px solid var(--border);
@@ -427,7 +437,10 @@
 
 <div class="sync-bar" id="syncBar">Bulut senkronizasyonu yükleniyor…</div>
 
-<div class="footer">Veriler bu cihazda saklanır (tarayıcı hafızası); Google ile giriş yapılırsa ayrıca buluta senkronlanır</div>
+<div class="footer">
+  Veriler bu cihazda saklanır (tarayıcı hafızası); Google ile giriş yapılırsa ayrıca buluta senkronlanır<br>
+  <button class="refresh-btn" onclick="location.reload()" aria-label="Sayfayı yenile" title="Sayfayı yenile">⟳ Sayfayı Yenile</button>
+</div>
 
 <div class="overlay" id="overlay" onclick="if(event.target===this) closeModal()">
   <div class="modal" id="modalContent"></div>
