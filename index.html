@@ -637,8 +637,10 @@ function removeFromLog(key, amount) {
 function change(key, delta) {
   if (delta < 0) {
     if (data[key] <= 0) return;
+    const before = data[key];
     data[key] = Math.max(0, data[key] + delta);
-    log.push({ id: genId(), date: fmtDate(new Date()), key, amount: 1, ts: Date.now(), enteredVakit: currentVakitKey() });
+    const amount = before - data[key];
+    log.push({ id: genId(), date: fmtDate(new Date()), key, amount, ts: Date.now(), enteredVakit: currentVakitKey() });
   } else {
     data[key] = data[key] + delta;
     removeFromLog(key, delta);

@@ -228,6 +228,31 @@ async function testGeriAlmaFazlasiEksikGirisiKirpiyor() {
   assert(log.filter(l => l.key === "vitir").length === 0, "log'da eksi kayıt oluşmuyor, sadece var olanlar düşüyor");
 }
 
+async function testChangeLogMiktariGercekDusenMiktar() {
+  const dom = loadPage();
+  const { window } = dom;
+
+  window.editCount("ikindi", "İkindi");
+  window.document.getElementById("promptInput").value = "10";
+  window._promptSubmit();
+
+  window.change("ikindi", -3); // 3 birim kıldım
+  const log1 = getLS(dom, "kazaLog");
+  const last1 = log1.filter(l => l.key === "ikindi").slice(-1)[0];
+  assert(last1.amount === 3, "delta -3 ile log kaydına gerçek düşen miktar (3) yazılmalı, sabit 1 değil");
+
+  window.editCount("ikindi", "İkindi");
+  window.document.getElementById("promptInput").value = "2";
+  window._promptSubmit();
+
+  window.change("ikindi", -5); // 5 istendi ama sadece 2 vardı, clamp devreye girmeli
+  const data = getLS(dom, "kazaData");
+  const log2 = getLS(dom, "kazaLog");
+  const last2 = log2.filter(l => l.key === "ikindi").slice(-1)[0];
+  assert(data.ikindi === 0, "kalan sayı 0'ın altına düşmüyor (clamp)");
+  assert(last2.amount === 2, "clamp devreye girdiğinde log'a istenen (5) değil gerçekte düşen miktar (2) yazılmalı");
+}
+
 async function testLogTemizlemeVeriyiEtkilemiyor() {
   const dom = loadPage();
   const { window } = dom;
@@ -284,6 +309,7 @@ async function main() {
   await testIstatistikGrafigi();
   await testGeriAlmaLogdanDaDusuyor();
   await testGeriAlmaFazlasiEksikGirisiKirpiyor();
+  await testChangeLogMiktariGercekDusenMiktar();
   await testLogTemizlemeVeriyiEtkilemiyor();
   await testVakitHesabiMevsimeGoreKayiyor();
 
