@@ -141,27 +141,54 @@ istatistikleri, geçmiş kayıt ve JSON yedekleme gibi özellikler sunar.
   değil.
 - **Yedekleme bütünlüğü**: `exportData()`/`importData()` yukarıdaki *tüm*
   localStorage anahtarlarını (data, startData, log, lastChange, profile,
-  milestone) kapsar. Yeni bir kalıcı durum (yeni bir localStorage anahtarı)
-  eklerseniz, onu da bu ikisine ekleyin — aksi halde kullanıcı yedeği başka
-  bir cihaza geri yüklediğinde o veri sessizce kaybolur.
+  milestone, goal — `kazaUpdatedAt` hariç, o yalnızca bulut senkron
+  modülünün iç kullanımıdır) kapsar. Yeni bir kalıcı durum (yeni bir
+  localStorage anahtarı) eklerseniz, onu da bu ikisine (VE giriş
+  yapılmışsa bulut senkron modülündeki `buildCloudPayload()`/
+  `applyCloudPayload()`'a) ekleyin — aksi halde kullanıcı yedeği başka bir
+  cihaza geri yüklediğinde veya bulut senkronu sırasında o veri sessizce
+  kaybolur.
 
 ## Geliştirme
 
 - Kurulum veya build gerekmez. `index.html` dosyasını doğrudan tarayıcıda
   açarak veya basit bir statik sunucu ile (`python3 -m http.server`)
   test edin.
-- Test framework'ü yoktur. Bu ortamda (sandbox) headless Chromium/Playwright
-  çalıştırmak için gereken sistem kütüphaneleri (örn. `libnspr4.so`) eksik
-  ve `sudo` yok — gerçek bir tarayıcıda ekran görüntüsü almak mümkün
-  olmayabilir. Bunun yerine `jsdom` (scratchpad dizinine `npm install
-  jsdom` ile kurulabilir) kullanarak sayfayı yükleyip `dispatchEvent` ile
-  buton tıklamalarını, modal açma/kapamayı ve `localStorage`/DOM sonuçlarını
-  doğrulayın. Bkz. bu depoda daha önce yazılmış `scratchpad/test*.js`
-  betikleri (geçici dizindedir, kalıcı değildir) örnek olarak.
-- Mantık değişikliklerinden sonra en azından şunları test edin: ilerleme
-  yüzdesinin hiçbir senaryoda negatife düşmediğini, `syncStart()`'ın
-  gerektiği her yerde çağrıldığını ve yedekleme dışa/içe aktarmanın tüm
-  localStorage anahtarlarını round-trip ettiğini.
+- **Kalıcı test suite'i vardır**: `tests/run.js`, `npm test` ile çalışır
+  (tek devDependency: `jsdom`, `package.json`'da). Bu ortamda (sandbox)
+  headless Chromium/Playwright çalıştırmak için gereken sistem
+  kütüphaneleri eksik ve `sudo` yok — gerçek bir tarayıcıda ekran
+  görüntüsü almak mümkün olmayabilir; `jsdom` bunun yerine sayfayı yükleyip
+  global fonksiyonları (`change`, `editCount`, `saveAll` vb.) doğrudan
+  çağırarak ve `localStorage`'ı okuyarak doğrular. Yeni bir mantık
+  değişikliğinden sonra hem yeni bir test ekleyin hem de `npm test`
+  çalıştırıp gerçekten geçtiğini doğrulayın — `test-runner` subagent'ı
+  (aşağıya bakın) bunun için kullanılabilir.
+- En azından şunları her zaman test edin: ilerleme yüzdesinin hiçbir
+  senaryoda negatife düşmediğini, `syncStart()`'ın gerektiği her yerde
+  çağrıldığını, "−" (geri al) işleminin log'dan da doğru miktarı
+  düşürdüğünü ve yedekleme dışa/içe aktarmanın tüm localStorage
+  anahtarlarını round-trip ettiğini.
+
+## Proje Özel Subagent'lar
+
+`.claude/agents/` altında bu projeye özel üç subagent tanımlıdır (genel
+`/code-review` gibi jenerik araçlardan farklı olarak, bu projede
+GERÇEKTEN yaşanmış hata sınıflarına odaklanırlar):
+
+- **test-runner** — `tests/run.js`'i çalıştırır, yeni özellik/hata için
+  proje stiline uygun test ekler.
+- **convention-guardian** — bir değişikliği bu dosyadaki (CLAUDE.md)
+  belgelenmiş değişmezlere ve geçmiş gerçek hatalara (syncStart sırası,
+  parseLocalDate tuzağı, yedek/bulut anahtar eksikliği, sessiz senkron
+  çakışması, service worker kapsam hatası vb.) karşı denetler.
+- **release-checklist** — push öncesi son kontrol: testler, script
+  syntax'ı, `sw.js`'deki `CACHE_NAME` sürüm artışı, manifest/ikon
+  tutarlılığı, `firestore.rules` uyumu.
+
+Yeni bir subagent tanımı eklerken/değiştirirken CLAUDE.md'deki bu listeyi
+de güncel tutun — subagent'lar CLAUDE.md'nin kurallarını uyguladığı için
+ikisi birbirinden kopmamalı.
 
 ## Kod Stili ve Kurallar
 
