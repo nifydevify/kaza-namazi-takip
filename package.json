@@ -1,0 +1,24 @@
+{
+  "name": "kaza-namazi-takip",
+  "version": "1.0.0",
+  "description": "Kaza (kılınmamış) namazlarınızı vakitlere göre takip etmenizi sağlayan basit, tek sayfalık bir web uygulaması.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node tests/run.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nifydevify/kaza-namazi-takip.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/nifydevify/kaza-namazi-takip/issues"
+  },
+  "homepage": "https://github.com/nifydevify/kaza-namazi-takip#readme",
+  "devDependencies": {
+    "jsdom": "^29.1.1"
+  }
+}

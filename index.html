@@ -442,30 +442,32 @@ function change(key, delta) {
 }
 
 function editCount(key, ad) {
-  const val = prompt(`${ad} için kalan kaza sayısını gir:`, data[key]);
-  const n = parseInt(val);
-  if (!isNaN(n) && n >= 0) {
-    data[key] = n;
-    markChange(key);
-    syncStart();
-    saveAll();
-  }
+  showPrompt(`${ad} Sayısını Düzenle`, `${ad} için kalan kaza sayısını gir:`, data[key], (val) => {
+    const n = parseInt(val);
+    if (!isNaN(n) && n >= 0) {
+      data[key] = n;
+      markChange(key);
+      syncStart();
+      saveAll();
+    }
+  }, { type: "number", attrs: 'min="0"' });
 }
 
 function bulkSet() {
-  const val = prompt("Her vakit için başlangıç kaza sayısını gir (örn: 500):");
-  const n = parseInt(val);
-  if (!isNaN(n) && n >= 0) {
-    NAMAZLAR.forEach(x => { data[x.key] = n; startData[x.key] = n; });
-    localStorage.setItem("kazaMilestone", "0");
-    saveAll();
-  }
+  showPrompt("Başlangıç Sayısı Gir", "Her vakit için başlangıç kaza sayısını gir (örn: 500):", "", (val) => {
+    const n = parseInt(val);
+    if (!isNaN(n) && n >= 0) {
+      NAMAZLAR.forEach(x => { data[x.key] = n; startData[x.key] = n; });
+      localStorage.setItem("kazaMilestone", "0");
+      saveAll();
+    }
+  }, { type: "number", attrs: 'min="0"' });
 }
 
 /* ---------- Toplu kılındı girişi ---------- */
 function openBulkPerformModal() {
   openModal(`
-    <button class="close-x" onclick="closeModal()">✕</button>
+    <button class="close-x" onclick="closeModal()" aria-label="Kapat">✕</button>
     <h2>Toplu Kılındı Gir</h2>
     <div class="hint">Kıldığınız kaza namazlarını vakit vakit girin, "Uygula" ile hepsi tek seferde işlensin.</div>
     ${NAMAZLAR.map(n => `
@@ -578,13 +580,13 @@ function render() {
           <div class="count">${data[n.key]} kaza kaldı</div>
         </div>
         <div class="btns">
-          <button class="btn-edit" onclick="editCount('${n.key}','${n.ad}')" title="Sayıyı düzenle">✎</button>
-          <button class="btn-minus" onclick="change('${n.key}', 1)" title="Geri al / düzelt (kalan sayıyı 1 artır)">−</button>
+          <button class="btn-edit" onclick="editCount('${n.key}','${n.ad}')" title="Sayıyı düzenle" aria-label="${n.ad} kalan sayısını düzenle">✎</button>
+          <button class="btn-minus" onclick="change('${n.key}', 1)" title="Geri al / düzelt (kalan sayıyı 1 artır)" aria-label="${n.ad} için geri al, kalan sayıyı 1 artır">−</button>
           <div class="val-wrap">
             <div class="val">${performed}</div>
             <div class="val-lbl">kılındı</div>
           </div>
-          <button class="btn-plus" onclick="change('${n.key}', -1)" title="Kıldım (kalan sayıyı 1 azalt)">+</button>
+          <button class="btn-plus" onclick="change('${n.key}', -1)" title="Kıldım (kalan sayıyı 1 azalt)" aria-label="${n.ad} kıldım, kalan sayıyı 1 azalt">+</button>
         </div>
       </div>
       <div class="row-bar-track"><div class="row-bar-fill" style="width:${pct}%"></div></div>
@@ -624,12 +626,52 @@ function closeModal() {
   document.getElementById("overlay").classList.remove("show");
 }
 
+// native prompt()/confirm() yerine tasarımla uyumlu modal tabanlı karşılıkları.
+// Senkron değildir: sonuç, native olduğu gibi dönüş değeri değil, onConfirm
+// callback'i ile teslim edilir.
+function showPrompt(title, message, defaultValue, onConfirm, opts = {}) {
+  openModal(`
+    <button class="close-x" onclick="closeModal()" aria-label="Kapat">✕</button>
+    <h2>${title}</h2>
+    <div class="hint">${message}</div>
+    <input type="${opts.type || "text"}" id="promptInput" ${opts.attrs || ""} value="${defaultValue ?? ""}">
+    <button class="modal-btn" onclick="_promptSubmit()">Tamam</button>
+    <button class="modal-btn secondary" onclick="closeModal()">Vazgeç</button>
+  `);
+  window._promptCallback = onConfirm;
+  const input = document.getElementById("promptInput");
+  input.focus();
+  input.select();
+  input.onkeydown = (e) => { if (e.key === "Enter") _promptSubmit(); };
+}
+function _promptSubmit() {
+  const val = document.getElementById("promptInput").value;
+  const cb = window._promptCallback;
+  closeModal();
+  if (cb) cb(val);
+}
+
+function showConfirm(title, message, onConfirm) {
+  openModal(`
+    <h2>${title}</h2>
+    <div class="hint">${message}</div>
+    <button class="modal-btn" onclick="_confirmYes()">Evet, devam et</button>
+    <button class="modal-btn secondary" onclick="closeModal()">Vazgeç</button>
+  `);
+  window._confirmCallback = onConfirm;
+}
+function _confirmYes() {
+  const cb = window._confirmCallback;
+  closeModal();
+  if (cb) cb();
+}
+
 /* ---------- Büluğ/tarih tabanlı otomatik hesaplama ---------- */
 function openCalcModal() {
   const profile = JSON.parse(localStorage.getItem("kazaProfile") || "{}");
   const todayStr = fmtDate(new Date());
   openModal(`
-    <button class="close-x" onclick="closeModal()">✕</button>
+    <button class="close-x" onclick="closeModal()" aria-label="Kapat">✕</button>
     <h2>Otomatik Hesapla</h2>
     <div class="hint">Kaza borcunuz, büluğ (dinen sorumlu olduğunuz) tarihinizden, namazlarınızı eksiksiz/aksatmadan kılmaya başladığınız tarihe kadar geçen gün sayısına göre hesaplanır.</div>
 
@@ -664,7 +706,7 @@ function openCalcModal() {
 function fillBaligFromBirth() {
   const birth = document.getElementById("calcBirth").value;
   const gender = document.getElementById("calcGender").value;
-  if (!birth) { alert("Önce doğum tarihinizi girin."); return; }
+  if (!birth) { showToast("Önce doğum tarihinizi girin."); return; }
   let ageInput = parseFloat(document.getElementById("calcBaligAge").value);
   if (!ageInput || isNaN(ageInput)) {
     ageInput = gender === "kadin" ? 9 : 12;
@@ -725,14 +767,18 @@ function previewCalc() {
 function applyCalc() {
   const totalDays = window._calcTotalDays;
   if (totalDays == null) return;
+  const doApply = () => {
+    NAMAZLAR.forEach(n => { data[n.key] = totalDays; startData[n.key] = totalDays; });
+    localStorage.setItem("kazaProfile", JSON.stringify(window._calcProfile));
+    localStorage.setItem("kazaMilestone", "0");
+    saveAll();
+    closeModal();
+  };
   if (data && Object.values(data).some(v => v > 0)) {
-    if (!confirm("Mevcut kaza sayılarınızın üzerine yazılacak. Devam edilsin mi?")) return;
+    showConfirm("Üzerine Yaz", "Mevcut kaza sayılarınızın üzerine yazılacak. Devam edilsin mi?", doApply);
+  } else {
+    doApply();
   }
-  NAMAZLAR.forEach(n => { data[n.key] = totalDays; startData[n.key] = totalDays; });
-  localStorage.setItem("kazaProfile", JSON.stringify(window._calcProfile));
-  localStorage.setItem("kazaMilestone", "0");
-  saveAll();
-  closeModal();
 }
 
 /* ---------- History ---------- */
@@ -764,20 +810,21 @@ function openHistoryModal() {
     }).join("");
   }
   openModal(`
-    <button class="close-x" onclick="closeModal()">✕</button>
+    <button class="close-x" onclick="closeModal()" aria-label="Kapat">✕</button>
     <h2>Geçmiş</h2>
     ${body}
   `);
 }
 
 function deleteLogDay(date) {
-  if (!confirm(`${date} tarihindeki kayıtlar silinsin ve sayılar geri alınsın mı?`)) return;
-  const entries = log.filter(l => l.date === date);
-  entries.forEach(e => { data[e.key] = (data[e.key] || 0) + e.amount; });
-  log = log.filter(l => l.date !== date);
-  syncStart();
-  saveAll();
-  openHistoryModal();
+  showConfirm("Günü Sil", `${date} tarihindeki kayıtlar silinsin ve sayılar geri alınsın mı?`, () => {
+    const entries = log.filter(l => l.date === date);
+    entries.forEach(e => { data[e.key] = (data[e.key] || 0) + e.amount; });
+    log = log.filter(l => l.date !== date);
+    syncStart();
+    saveAll();
+    openHistoryModal();
+  });
 }
 
 /* ---------- Backup / Restore ---------- */
@@ -810,24 +857,25 @@ function importData(event) {
     try {
       const parsed = JSON.parse(reader.result);
       if (!parsed.data || !parsed.startData) throw new Error("Geçersiz dosya");
-      if (!confirm("Mevcut veriler yedek dosyasındaki verilerle değiştirilecek. Devam edilsin mi?")) return;
-      data = {}; startData = {};
-      NAMAZLAR.forEach(n => {
-        data[n.key] = parsed.data[n.key] || 0;
-        startData[n.key] = parsed.startData[n.key] || data[n.key];
+      showConfirm("Yedek Geri Yükle", "Mevcut veriler yedek dosyasındaki verilerle değiştirilecek. Devam edilsin mi?", () => {
+        data = {}; startData = {};
+        NAMAZLAR.forEach(n => {
+          data[n.key] = parsed.data[n.key] || 0;
+          startData[n.key] = parsed.startData[n.key] || data[n.key];
+        });
+        log = Array.isArray(parsed.log) ? parsed.log : [];
+        lastChange = parsed.lastChange || null;
+        if (parsed.profile) {
+          localStorage.setItem("kazaProfile", JSON.stringify(parsed.profile));
+        } else {
+          localStorage.removeItem("kazaProfile");
+        }
+        localStorage.setItem("kazaMilestone", String(parsed.milestone || 0));
+        saveAll();
+        showToast("Yedek başarıyla geri yüklendi.");
       });
-      log = Array.isArray(parsed.log) ? parsed.log : [];
-      lastChange = parsed.lastChange || null;
-      if (parsed.profile) {
-        localStorage.setItem("kazaProfile", JSON.stringify(parsed.profile));
-      } else {
-        localStorage.removeItem("kazaProfile");
-      }
-      localStorage.setItem("kazaMilestone", String(parsed.milestone || 0));
-      saveAll();
-      alert("Yedek başarıyla geri yüklendi.");
     } catch (err) {
-      alert("Dosya okunamadı: geçerli bir yedek dosyası seçin.");
+      showToast("Dosya okunamadı: geçerli bir yedek dosyası seçin.");
     }
   };
   reader.readAsText(file);
