@@ -190,6 +190,13 @@ Yeni bir subagent tanımı eklerken/değiştirirken CLAUDE.md'deki bu listeyi
 de güncel tutun — subagent'lar CLAUDE.md'nin kurallarını uyguladığı için
 ikisi birbirinden kopmamalı.
 
+**Önemli**: Claude Code, `.claude/agents/*.md` altındaki tanımları yalnızca
+process başlangıcında bir kez tarar. `.claude/agents/` içine yeni bir
+dosya eklendiğinde veya var olan biri değiştirildiğinde, o değişiklik
+`/clear` ile GÖRÜNMEZ — mevcut oturumun `Agent` aracı yeni/güncel
+subagent'ı tanımaz. Devam eden bir oturumda bu değişikliği etkin kılmak
+için Claude Code'u tamamen yeniden başlatmak gerekir (örn. `claude -r`).
+
 ## Kod Stili ve Kurallar
 
 - Uygulama dili ve tüm kullanıcıya görünen metinler **Türkçe**'dir
