@@ -70,7 +70,10 @@ istatistikleri, geçmiş kayıt ve JSON yedekleme gibi özellikler sunar.
   `saveAll()` → `touchUpdatedAt()` ile zaman damgasını ilerletiyordu), o
   sıfırlanmış hal "daha yeni" sayılıp tekrar giriş yapılınca buluttaki
   gerçek veriyi sessizce ezdi. Bu onayı asla kaldırmayın/otomatikleştirmeyin.
-  Not: yalnızca giriş anındaki ilk uzlaşma bu şekilde korunuyor;
+  Seçim butonlarına tıklamak doğrudan uygulamaz — `showConfirm()` ile
+  ikinci bir "Emin misin?" onayı ister (yanlışlıkla tıklamayı önlemek
+  için; bu geri alınamaz bir üzerine yazma). Not: yalnızca giriş anındaki
+  ilk uzlaşma bu şekilde korunuyor;
   `beginListening()`'teki canlı `onSnapshot` dinleyicisi (ikisi de zaten
   giriş yapmış durumdayken) hâlâ `updatedAt` karşılaştırmasıyla otomatik
   uygular (her canlı güncellemede sormak kullanılamaz derecede rahatsız

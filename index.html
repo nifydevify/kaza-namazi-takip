@@ -1245,19 +1245,35 @@ if ("serviceWorker" in navigator) {
         Toplam kalan kaza: ${l.total} · Kayıt sayısı: ${l.logCount}<br>
         Son güncelleme: ${l.when}
       </div>
-      <button class="modal-btn" onclick="window.__useCloudData()">☁️ Buluttaki Veriyi Kullan</button>
-      <button class="modal-btn secondary" onclick="window.__useLocalData()">📱 Bu Cihazdaki Veriyi Kullan</button>
+      <button class="modal-btn" onclick="window.__confirmUseCloud()">☁️ Buluttaki Veriyi Kullan</button>
+      <button class="modal-btn secondary" onclick="window.__confirmUseLocal()">📱 Bu Cihazdaki Veriyi Kullan</button>
     `);
-    window.__useCloudData = () => {
+    const useCloud = () => {
       applyCloudPayload(cloud);
       window.closeModal();
       beginListening(ref);
     };
-    window.__useLocalData = () => {
+    const useLocal = () => {
       setDoc(ref, localPayload).catch(() => {});
       localStorage.setItem("kazaUpdatedAt", String(localPayload.updatedAt));
       window.closeModal();
       beginListening(ref);
+    };
+    // Yanlışlıkla tıklamayı önlemek için ikinci bir onay adımı — bu geri
+    // alınamaz bir üzerine yazma işlemi olduğu için tek tıkla yürütülmez.
+    window.__confirmUseCloud = () => {
+      window.showConfirm(
+        "Emin misin?",
+        `Bu cihazdaki veri (toplam kalan: ${l.total}) silinip yerine buluttaki veri (toplam kalan: ${c.total}) yazılacak. Bu geri alınamaz.`,
+        useCloud
+      );
+    };
+    window.__confirmUseLocal = () => {
+      window.showConfirm(
+        "Emin misin?",
+        `Buluttaki veri (toplam kalan: ${c.total}) silinip yerine bu cihazdaki veri (toplam kalan: ${l.total}) yazılacak. Bu geri alınamaz.`,
+        useLocal
+      );
     };
   }
 
