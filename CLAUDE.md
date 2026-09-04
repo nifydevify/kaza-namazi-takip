@@ -15,6 +15,15 @@ istatistikleri, geçmiş kayıt ve JSON yedekleme gibi özellikler sunar.
 - **Tek dosya**: Tüm uygulama `index.html` içinde yaşar (HTML + CSS + vanilla
   JS, tek `<script>` bloğu içinde). Build adımı, paket yöneticisi veya
   framework yoktur.
+- **PWA**: `manifest.json` + `sw.js` (service worker) ile uygulama
+  installable ve offline çalışabilir durumdadır. `icons/` altında hem
+  köşeleri yuvarlatılmış "any" ikonlar hem de tam kare "maskable" ikon
+  bulunur (kaynak `.svg` dosyaları da orada saklanır — yeni bir ikon
+  boyutu gerekirse onlardan yeniden render edilebilir). `sw.js`
+  network-first + cache fallback stratejisi kullanır; önbelleği
+  güncellemek (örn. yeni bir statik dosya eklendiğinde) için `sw.js`
+  içindeki `CACHE_NAME` değerini artırın — aksi halde kullanıcılar eski
+  önbellekten servis edilmeye devam edebilir.
 - **Veri saklama**: Durum tamamen tarayıcının `localStorage`'ında saklanır,
   birbirine bağlı birden fazla anahtar altında:
   - `kazaData` — her vakit için **kalan** kaza sayısı (`data`)

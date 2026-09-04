@@ -13,6 +13,7 @@ tek sayfalık bir web uygulaması.
 - Toplam kalan kaza sayısının üstte özet kart olarak gösterilmesi
 - Veriler yalnızca kendi cihazınızda, tarayıcı hafızasında (`localStorage`)
   saklanır — hesap veya internet bağlantısı gerekmez
+- PWA desteği: telefonda "ana ekrana ekle" ile kurulabilir, offline çalışır
 
 ## Kullanım
 
