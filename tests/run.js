@@ -173,12 +173,30 @@ async function testGunlukHedefRoundTrip() {
   assert(window.document.getElementById("todayVal").textContent === "2 / 5", "hedef UI'da gösteriliyor");
 }
 
+async function testIstatistikGrafigi() {
+  const dom = loadPage();
+  const { window } = dom;
+
+  window.editCount("yatsi", "Yatsı");
+  window.document.getElementById("promptInput").value = "3";
+  window._promptSubmit();
+  window.change("yatsi", -1);
+  window.change("yatsi", -1);
+
+  window.openHistoryModal();
+  const bars = window.document.querySelectorAll(".chart-bar");
+  assert(bars.length === 30, `grafik 30 günlük çubuk gösteriyor (bulunan: ${bars.length})`);
+  const title = window.document.querySelector(".chart-title").textContent;
+  assert(title.includes("toplam 2 kaza kılındı"), `grafik başlığı doğru toplamı gösteriyor (görünen: "${title}")`);
+}
+
 async function main() {
   await testYuzdeHicNegatifeDusmez();
   await testSyncStartEditCountArtinca();
   await testYedekDisaIceAktarmaTumAnahtarlariTasir();
   await testGirisVaktiLogaIsleniyor();
   await testGunlukHedefRoundTrip();
+  await testIstatistikGrafigi();
 
   console.log(`\n${passed} test geçti, ${failed} test başarısız.`);
   process.exit(failed > 0 ? 1 : 0);

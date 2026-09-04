@@ -280,6 +280,28 @@
   }
   .preview-box b { color: var(--text); font-size: 1.1rem; }
 
+  .chart-wrap { margin-bottom: 18px; }
+  .chart-title {
+    font-size: 0.78rem;
+    color: var(--muted);
+    margin-bottom: 8px;
+    text-align: center;
+  }
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 2px;
+    height: 56px;
+    background: #0f1419;
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .chart-bar {
+    flex: 1;
+    background: var(--accent);
+    min-height: 2px;
+    border-radius: 2px 2px 0 0;
+  }
   .history-day {
     border-bottom: 1px solid var(--border);
     padding: 10px 0;
@@ -826,6 +848,32 @@ function applyCalc() {
   }
 }
 
+/* ---------- İstatistik grafiği (son 30 gün) ---------- */
+function buildChartHtml() {
+  const days = [];
+  for (let i = 29; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    days.push(fmtDate(d));
+  }
+  const byDate = {};
+  log.forEach(l => { byDate[l.date] = (byDate[l.date] || 0) + l.amount; });
+  const values = days.map(d => byDate[d] || 0);
+  const max = Math.max(1, ...values);
+  const bars = values.map((v, i) => {
+    const h = Math.round((v / max) * 100);
+    const label = parseLocalDate(days[i]).toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+    return `<div class="chart-bar" style="height:${Math.max(h, v > 0 ? 4 : 2)}%" title="${label}: ${v} kılındı"></div>`;
+  }).join("");
+  const total30 = values.reduce((a, b) => a + b, 0);
+  return `
+    <div class="chart-wrap">
+      <div class="chart-title">Son 30 gün — toplam ${total30} kaza kılındı</div>
+      <div class="chart-bars">${bars}</div>
+    </div>
+  `;
+}
+
 /* ---------- History ---------- */
 function openHistoryModal() {
   const byDate = {};
@@ -872,6 +920,7 @@ function openHistoryModal() {
   openModal(`
     <button class="close-x" onclick="closeModal()" aria-label="Kapat">✕</button>
     <h2>Geçmiş</h2>
+    ${buildChartHtml()}
     ${body}
   `);
 }
