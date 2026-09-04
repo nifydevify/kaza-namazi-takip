@@ -34,7 +34,16 @@ istatistikleri, geçmiş kayıt ve JSON yedekleme gibi özellikler sunar.
     bunlardan türetilir). `enteredVakit`, kaydın günün hangi saat
     diliminde girildiğini tutar (bkz. `currentVakitKey()`) — `key`'den
     farklı olabilir (örn. ikindi vaktinde sabah kazası kılınması); sadece
-    bilgi amaçlıdır, konum kullanmayan kaba bir saat aralığı tahminidir.
+    bilgi amaçlıdır, dinen kesin vakit sınırı değildir. `currentVakitKey()`
+    artık `calcPrayerTimesForDate()` ile güneş açısına dayalı gerçek bir
+    astronomik hesap kullanır (PrayTimes.org'un yaygın formülleri; Fajr
+    18°, Isha 17°, Asr gölge faktörü 1, Maghrib -0.833°), sabit bir
+    Türkiye-ortası enlem/boylam varsayarak (`TR_LAT`/`TR_LON`, GPS izni
+    istenmiyor). Eski sürüm sabit saat aralıkları (örn. "akşam 18:00-19:30")
+    kullanıyordu; bu, mevsime göre kaymadığı için gerçek bir hataya yol açtı
+    (4 Eylül 19:39'da girilen bir akşam kaydı yanlışlıkla "yatsı"
+    işaretlendi — o saatte gerçek akşam vakti henüz yeni girmişti). Sabit
+    saat aralıklarına GERİ DÖNMEYİN.
   - `kazaLastChange` — `{key, ts}`, en son hangi vaktin değiştiği (satır
     vurgusu ve saniyeye kadar zaman gösterimi için)
   - `kazaProfile` — "Otomatik Hesapla" modalına girilen değerler (doğum

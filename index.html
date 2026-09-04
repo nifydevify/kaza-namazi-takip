@@ -487,18 +487,94 @@ function genId() {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
-// Namaz vakitleri konuma göre kayar; burada GPS/konum kullanılmadığı için bu
-// yalnızca sabit saat aralıklarına dayalı KABA bir tahmindir — bir kaza
-// kaydının günün hangi diliminde girildiğini (örn. "ikindi vaktinde sabah
-// kazası kılındı") not etmek amaçlıdır, dinen kesin vakit sınırı değildir.
+// Namaz vakitlerinin saati mevsime göre birkaç saat kayar (örn. akşam yazın
+// ~19:30'dan sonra, kışın ~17:00 civarı olabilir). Sabit saat aralıkları
+// (eski yaklaşım) bu yüzden sık sık yanlış vakit gösteriyordu — bkz. gerçek
+// bir örnek: 4 Eylül'de saat 19:39'da girilen bir kayıt "yatsı" olarak
+// işaretlenmişti, oysa o saatte akşam yeni girmişti. Bunun yerine güneşin
+// açısına dayalı gerçek bir astronomik hesap kullanıyoruz (PrayTimes.org'un
+// yaygın kullanılan formülleri) — GPS izni istemeden, Türkiye'nin ortası
+// için sabit bir enlem/boylam varsayıyoruz (TR_LAT/TR_LON). Bu hâlâ tam
+// isabetli değil (gerçek konum yerine ülke ortalaması, ~15-30 dk sapma
+// olabilir) ama sabit saat aralıklarından çok daha doğru — yıl boyunca
+// otomatik kayar. Sadece bir kaza kaydının günün hangi diliminde girildiğini
+// not etmek amaçlıdır, dinen kesin vakit sınırı değildir.
+const TR_LAT = 39.0;
+const TR_LON = 35.0;
+const TR_TIMEZONE = 3; // Türkiye 2016'dan beri yıl boyu sabit UTC+3, DST yok
+
+function fixAngle360(a) { a = a % 360; return a < 0 ? a + 360 : a; }
+function fixHour24(h) { h = h % 24; return h < 0 ? h + 24 : h; }
+function degToRad(d) { return (d * Math.PI) / 180; }
+function radToDeg(r) { return (r * 180) / Math.PI; }
+
+function julianDate(y, m, d) {
+  if (m <= 2) { y -= 1; m += 12; }
+  const A = Math.floor(y / 100);
+  const B = 2 - A + Math.floor(A / 4);
+  return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (m + 1)) + d + B - 1524.5;
+}
+
+// Güneşin o Julian gündeki "equation of time" (dk cinsinden, saat biriminde)
+// ve deklinasyon açısı (derece).
+function sunPosition(jd) {
+  const D = jd - 2451545.0;
+  const g = fixAngle360(357.529 + 0.98560028 * D);
+  const q = fixAngle360(280.459 + 0.98564736 * D);
+  const L = fixAngle360(q + 1.915 * Math.sin(degToRad(g)) + 0.02 * Math.sin(degToRad(2 * g)));
+  const e = 23.439 - 0.00000036 * D;
+  const RA = radToDeg(Math.atan2(Math.cos(degToRad(e)) * Math.sin(degToRad(L)), Math.cos(degToRad(L)))) / 15;
+  const eqt = q / 15 - fixHour24(RA);
+  const decl = radToDeg(Math.asin(Math.sin(degToRad(e)) * Math.sin(degToRad(L))));
+  return { eqt, decl };
+}
+
+// Güneş ufka göre `angle` derece altındayken (fecir/şafak gibi) o anın yerel
+// güneş saatini döner. isRising=true ise öğleden önceki (sabah), false ise
+// öğleden sonraki (akşam) geçişi hesaplar.
+function sunAngleHour(jd, lat, angle, isRising) {
+  const { eqt, decl } = sunPosition(jd);
+  const noon = 12 - eqt;
+  const cosArg = (-Math.sin(degToRad(angle)) - Math.sin(degToRad(lat)) * Math.sin(degToRad(decl))) /
+    (Math.cos(degToRad(lat)) * Math.cos(degToRad(decl)));
+  const t = radToDeg(Math.acos(Math.max(-1, Math.min(1, cosArg)))) / 15;
+  return isRising ? noon - t : noon + t;
+}
+
+function asrHour(jd, lat) {
+  const { eqt, decl } = sunPosition(jd);
+  const noon = 12 - eqt;
+  const angle = -radToDeg(Math.atan(1 / (1 + Math.tan(degToRad(Math.abs(lat - decl))))));
+  const cosArg = (-Math.sin(degToRad(angle)) - Math.sin(degToRad(lat)) * Math.sin(degToRad(decl))) /
+    (Math.cos(degToRad(lat)) * Math.cos(degToRad(decl)));
+  const t = radToDeg(Math.acos(Math.max(-1, Math.min(1, cosArg)))) / 15;
+  return noon + t;
+}
+
+function toZoneClock(solarHour, lon, timezone) {
+  return fixHour24(solarHour + timezone - lon / 15);
+}
+
+function calcPrayerTimesForDate(date) {
+  const jd = julianDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
+  return {
+    fajr: toZoneClock(sunAngleHour(jd, TR_LAT, 18, true), TR_LON, TR_TIMEZONE),
+    dhuhr: toZoneClock(12 - sunPosition(jd).eqt, TR_LON, TR_TIMEZONE),
+    asr: toZoneClock(asrHour(jd, TR_LAT), TR_LON, TR_TIMEZONE),
+    maghrib: toZoneClock(sunAngleHour(jd, TR_LAT, 0.833, false), TR_LON, TR_TIMEZONE),
+    isha: toZoneClock(sunAngleHour(jd, TR_LAT, 17, false), TR_LON, TR_TIMEZONE),
+  };
+}
+
 function currentVakitKey(d = new Date()) {
+  const t = calcPrayerTimesForDate(d);
   const h = d.getHours() + d.getMinutes() / 60;
-  if (h >= 3 && h < 6.5) return "sabah";
-  if (h >= 6.5 && h < 15) return "ogle";
-  if (h >= 15 && h < 18) return "ikindi";
-  if (h >= 18 && h < 19.5) return "aksam";
-  if (h >= 19.5) return "yatsi";
-  return "vitir"; // 00:00–03:00
+  if (h >= t.fajr && h < t.dhuhr) return "sabah";
+  if (h >= t.dhuhr && h < t.asr) return "ogle";
+  if (h >= t.asr && h < t.maghrib) return "ikindi";
+  if (h >= t.maghrib && h < t.isha) return "aksam";
+  if (h >= t.isha) return "yatsi"; // yatsıdan gece yarısına kadar
+  return "vitir"; // gece yarısından fecre (sabaha) kadar
 }
 
 function syncStart() {

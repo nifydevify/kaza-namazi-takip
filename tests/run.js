@@ -253,6 +253,28 @@ async function testLogTemizlemeVeriyiEtkilemiyor() {
   assert(startAfter.sabah === startBefore.sabah, "başlangıç sayısı log temizlenince değişmedi");
 }
 
+async function testVakitHesabiMevsimeGoreKayiyor() {
+  const dom = loadPage();
+  const { window } = dom;
+
+  // Gerçek şikayet: 4 Eylül 19:39'da girilen bir kayıt, eski sabit saat
+  // aralığında (akşam 18:00-19:30) yanlışlıkla "yatsı" olarak işaretleniyordu.
+  const sept4Evening = new window.Date(2026, 8, 4, 19, 39);
+  assert(window.currentVakitKey(sept4Evening) === "aksam", `4 Eylül 19:39 artık akşam olarak hesaplanıyor (bulunan: ${window.currentVakitKey(sept4Evening)})`);
+
+  // Akşam vakti kışın (Ocak) çok daha erken, yazın (Haziran) çok daha geç
+  // olmalı — sabit saat aralığı bunu hiç yansıtmıyordu, astronomik hesap
+  // mevsime göre kaymalı.
+  const janTimes = window.calcPrayerTimesForDate(new window.Date(2026, 0, 15));
+  const junTimes = window.calcPrayerTimesForDate(new window.Date(2026, 5, 15));
+  assert(junTimes.maghrib - janTimes.maghrib > 1.5, `akşam vakti yazın kıştan belirgin şekilde geç (Ocak: ${janTimes.maghrib.toFixed(2)}, Haziran: ${junTimes.maghrib.toFixed(2)})`);
+
+  // Tüm vakitler makul bir 24 saatlik aralıkta olmalı (formül taşması yok).
+  ["fajr", "dhuhr", "asr", "maghrib", "isha"].forEach((k) => {
+    assert(janTimes[k] >= 0 && janTimes[k] < 24, `${k} 0-24 saat aralığında (${janTimes[k]})`);
+  });
+}
+
 async function main() {
   await testYuzdeHicNegatifeDusmez();
   await testSyncStartEditCountArtinca();
@@ -263,6 +285,7 @@ async function main() {
   await testGeriAlmaLogdanDaDusuyor();
   await testGeriAlmaFazlasiEksikGirisiKirpiyor();
   await testLogTemizlemeVeriyiEtkilemiyor();
+  await testVakitHesabiMevsimeGoreKayiyor();
 
   console.log(`\n${passed} test geçti, ${failed} test başarısız.`);
   process.exit(failed > 0 ? 1 : 0);
