@@ -1157,22 +1157,29 @@ if ("serviceWorker" in navigator) {
     `);
   }
 
-  async function handleSignedIn(user) {
-    renderSignedIn(user);
-    const ref = doc(db, "users", user.uid);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) {
-      await setDoc(ref, buildCloudPayload());
-    } else {
-      const cloud = snap.data();
-      const lu = localUpdatedAt();
-      const cu = cloud.updatedAt || 0;
-      if (cu > lu) {
-        applyCloudPayload(cloud);
-      } else if (lu > cu) {
-        await setDoc(ref, buildCloudPayload());
-      }
-    }
+  // updatedAt hariç, gerçek içerik aynı mı diye bakar. Sadece zaman
+  // damgasına güvenmiyoruz: "hangisi daha yeni" her zaman "hangisi doğru"
+  // anlamına gelmez (örn. çıkış yapılıp yerelde veri sıfırlanırsa, o
+  // sıfırlanmış hal zaman olarak daha yeni görünür ama kullanıcının asıl
+  // istediği veri değildir). Bu yüzden içerik farklıysa ASLA sessizce
+  // birini seçmeyip kullanıcıya soruyoruz (bkz. showSyncConflictModal).
+  function payloadContent(p) {
+    return JSON.stringify({
+      data: p.data || {}, startData: p.startData || {}, log: p.log || [],
+      lastChange: p.lastChange || null, profile: p.profile || null,
+      milestone: p.milestone || 0, goal: p.goal || 0,
+    });
+  }
+
+  function summarize(payload) {
+    const data = payload.data || {};
+    const total = Object.values(data).reduce((s, v) => s + (v || 0), 0);
+    const logCount = (payload.log || []).length;
+    const when = payload.updatedAt ? new Date(payload.updatedAt).toLocaleString("tr-TR") : "bilinmiyor";
+    return { total, logCount, when };
+  }
+
+  function beginListening(ref) {
     if (unsubscribeSnapshot) unsubscribeSnapshot();
     unsubscribeSnapshot = onSnapshot(ref, (snap2) => {
       if (!snap2.exists()) return;
@@ -1181,6 +1188,59 @@ if ("serviceWorker" in navigator) {
         applyCloudPayload(cloud);
       }
     });
+  }
+
+  function showSyncConflictModal(cloud, localPayload, ref) {
+    const c = summarize(cloud);
+    const l = summarize(localPayload);
+    window.openModal(`
+      <h2>Hangi Veri Kullanılsın?</h2>
+      <div class="hint">
+        Bu Google hesabındaki buluttaki veri ile bu cihazdaki veri birbirinden
+        farklı. Seçtiğin taraf diğerinin üzerine yazılacak — dikkatli seç.
+      </div>
+      <div class="preview-box" style="text-align:left; margin-top:10px;">
+        <b>☁️ Buluttaki veri</b><br>
+        Toplam kalan kaza: ${c.total} · Kayıt sayısı: ${c.logCount}<br>
+        Son güncelleme: ${c.when}
+      </div>
+      <div class="preview-box" style="text-align:left; margin-top:10px;">
+        <b>📱 Bu cihazdaki veri</b><br>
+        Toplam kalan kaza: ${l.total} · Kayıt sayısı: ${l.logCount}<br>
+        Son güncelleme: ${l.when}
+      </div>
+      <button class="modal-btn" onclick="window.__useCloudData()">☁️ Buluttaki Veriyi Kullan</button>
+      <button class="modal-btn secondary" onclick="window.__useLocalData()">📱 Bu Cihazdaki Veriyi Kullan</button>
+    `);
+    window.__useCloudData = () => {
+      applyCloudPayload(cloud);
+      window.closeModal();
+      beginListening(ref);
+    };
+    window.__useLocalData = () => {
+      setDoc(ref, localPayload).catch(() => {});
+      localStorage.setItem("kazaUpdatedAt", String(localPayload.updatedAt));
+      window.closeModal();
+      beginListening(ref);
+    };
+  }
+
+  async function handleSignedIn(user) {
+    renderSignedIn(user);
+    const ref = doc(db, "users", user.uid);
+    const snap = await getDoc(ref);
+    if (!snap.exists()) {
+      await setDoc(ref, buildCloudPayload());
+      beginListening(ref);
+      return;
+    }
+    const cloud = snap.data();
+    const localPayload = buildCloudPayload();
+    if (payloadContent(cloud) === payloadContent(localPayload)) {
+      beginListening(ref);
+      return;
+    }
+    showSyncConflictModal(cloud, localPayload, ref);
   }
 
   onAuthStateChanged(auth, (user) => {

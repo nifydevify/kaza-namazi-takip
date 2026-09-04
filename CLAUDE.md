@@ -58,8 +58,23 @@ istatistikleri, geçmiş kayıt ve JSON yedekleme gibi özellikler sunar.
   değişikliği buluta iter), uzaktan gelen değişiklik `applyCloudPayload()`
   → `reloadStateFromStorage()` (yalnızca localStorage'ı okuyup `render()`
   çağırır, tekrar buluta yazmaz — döngü olmasın diye `saveAll()` DEĞİL bu
-  çağrılır) ile yerel duruma yansır. Çakışma çözümü basit "son yazan
-  kazanır": her iki tarafta da `updatedAt` (epoch ms) karşılaştırılır.
+  çağrılır) ile yerel duruma yansır.
+  **Giriş anında çakışma çözümü**: `handleSignedIn()` yalnızca zaman
+  damgasına göre otomatik/sessiz seçim YAPMAZ — içerik (data/startData/
+  log/lastChange/profile/milestone/goal) buluttakiyle birebir aynıysa
+  hiçbir şey yapmadan dinlemeye geçer, farklıysa `showSyncConflictModal()`
+  ile kullanıcıya her iki tarafın özetini (toplam kalan, kayıt sayısı, son
+  güncelleme) gösterip elle seçtirir. Bunun nedeni gerçek bir olay: eski
+  sürüm yalnızca `updatedAt`'a bakıp "daha yeni" olanı otomatik buluta
+  yazıyordu; kullanıcı çıkış yapıp yerelde veriyi sıfırlayınca (bu da
+  `saveAll()` → `touchUpdatedAt()` ile zaman damgasını ilerletiyordu), o
+  sıfırlanmış hal "daha yeni" sayılıp tekrar giriş yapılınca buluttaki
+  gerçek veriyi sessizce ezdi. Bu onayı asla kaldırmayın/otomatikleştirmeyin.
+  Not: yalnızca giriş anındaki ilk uzlaşma bu şekilde korunuyor;
+  `beginListening()`'teki canlı `onSnapshot` dinleyicisi (ikisi de zaten
+  giriş yapmış durumdayken) hâlâ `updatedAt` karşılaştırmasıyla otomatik
+  uygular (her canlı güncellemede sormak kullanılamaz derecede rahatsız
+  edici olurdu) — bu kabul edilen, kasıtlı bir risktir.
   Firebase config (apiKey vb.) bilerek client-side'da public'tir — gerçek
   erişim kontrolü `firestore.rules` ile sağlanır (her kullanıcı yalnızca
   `users/{kendi uid'si}` belgesine erişebilir). Bu proje Firebase CLI ile
