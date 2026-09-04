@@ -20,14 +20,21 @@ istatistikleri, geçmiş kayıt ve JSON yedekleme gibi özellikler sunar.
   - `kazaData` — her vakit için **kalan** kaza sayısı (`data`)
   - `kazaStart` — her vakit için **başlangıç/taban** sayısı (`startData`);
     ilerleme yüzdesi `(startData - data) / startData` olarak hesaplanır
-  - `kazaLog` — kılınan her kaza için `{id, date, key, amount, ts}` girişleri
-    (streak, tahmini bitiş ve Geçmiş ekranı bunlardan türetilir)
+  - `kazaLog` — kılınan her kaza için `{id, date, key, amount, ts,
+    enteredVakit}` girişleri (streak, tahmini bitiş ve Geçmiş ekranı
+    bunlardan türetilir). `enteredVakit`, kaydın günün hangi saat
+    diliminde girildiğini tutar (bkz. `currentVakitKey()`) — `key`'den
+    farklı olabilir (örn. ikindi vaktinde sabah kazası kılınması); sadece
+    bilgi amaçlıdır, konum kullanmayan kaba bir saat aralığı tahminidir.
   - `kazaLastChange` — `{key, ts}`, en son hangi vaktin değiştiği (satır
     vurgusu ve saniyeye kadar zaman gösterimi için)
   - `kazaProfile` — "Otomatik Hesapla" modalına girilen değerler (doğum
     tarihi, cinsiyet, büluğ tarihi, eksiksiz namaza başlama tarihi vb.),
     modal her açıldığında geri doldurulur
   - `kazaMilestone` — en son kutlanan 50'lik ilerleme eşiği
+  - `kazaGoal` — günlük hedef (`goal`), toplam vakit bağımsız tek bir sayı;
+    0 ise hedef kapalı demektir. Stats satırındaki üçüncü kutuda
+    ("Bugün kılınan") gösterilir, kutuya dokununca `setGoal()` açılır.
   - Sunucu tarafı veya ağ isteği yoktur; her şey `saveAll()` üzerinden
     localStorage'a yazılır.
 - **Değişmez kural — `startData[key] >= data[key]`**: İlerleme yüzdesi bu
@@ -94,12 +101,15 @@ istatistikleri, geçmiş kayıt ve JSON yedekleme gibi özellikler sunar.
   `--text`, `--muted`, `--border`, `--card`, `--gold`) kullanarak tema
   tutarlılığını koru.
 - Sayfa düzeni kasıtlı olarak kompakt tutulur: başlık → son işaretlenen
-  bandı → 6 vakit satırı → toplam/seri/tahmini bitiş paneli → eylem
-  butonları → footer. Vakit satırlarının ilk ekranda (kaydırmadan) görünür
-  olması öncelikli tutuldu; özet panelleri kasıtlı olarak listenin altına
-  taşındı. Boyutlar kullanıcı geri bildirimiyle birkaç kez büyütüldü —
-  yeniden küçültmeden önce mevcut `<style>` bloğundaki değerleri kontrol
-  edin, eski (küçük) değerleri varsaymayın.
+  bandı → 6 vakit satırı → toplam/seri/tahmini bitiş/bugün kılınan paneli →
+  eylem butonları → footer. Vakit satırlarının ilk ekranda (kaydırmadan)
+  görünür olması öncelikli tutuldu; özet panelleri kasıtlı olarak listenin
+  altına taşındı. Boyutlar kullanıcı geri bildirimiyle birkaç kez
+  büyütüldü — yeniden küçültmeden önce mevcut `<style>` bloğundaki
+  değerleri kontrol edin, eski (küçük) değerleri varsaymayın. İstisna:
+  `.stats-row` üç kutuya (seri, tahmini bitiş, günlük hedef) çıkarılırken
+  `.stat-box`/`.stat-val`/`.stat-lbl` bilinçli olarak biraz küçültüldü —
+  bu, üçüncü kutu eklemenin gerektirdiği bir ayardır, geri almayın.
 - Gereksiz soyutlama veya yorum ekleme; kod zaten küçük ve okunabilir
   durumda. Yorum yalnızca WHY açık olmadığında (örn. tarih ayrıştırma
   tuzağı, `syncStart()` çağrı sırası) eklenir.

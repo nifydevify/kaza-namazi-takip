@@ -139,10 +139,46 @@ function localStorage_kazaMilestone_set(dom, val) {
   dom.window.localStorage.setItem("kazaMilestone", val);
 }
 
+async function testGirisVaktiLogaIsleniyor() {
+  const dom = loadPage();
+  const { window } = dom;
+
+  window.editCount("ikindi", "İkindi");
+  window.document.getElementById("promptInput").value = "3";
+  window._promptSubmit();
+  window.change("ikindi", -1);
+
+  const log = getLS(dom, "kazaLog");
+  const last = log[log.length - 1];
+  assert(last.key === "ikindi", "log kaydı doğru vakte ait");
+  assert(NAMAZLAR.includes(last.enteredVakit), `enteredVakit geçerli bir vakit anahtarı (${last.enteredVakit})`);
+}
+
+async function testGunlukHedefRoundTrip() {
+  const dom = loadPage();
+  const { window } = dom;
+
+  window.setGoal();
+  window.document.getElementById("promptInput").value = "5";
+  window._promptSubmit();
+  assert(getLS(dom, "kazaGoal") === 5, "hedef kaydedildi");
+
+  window.editCount("vitir", "Vitir");
+  window.document.getElementById("promptInput").value = "3";
+  window._promptSubmit();
+  window.change("vitir", -1);
+  window.change("vitir", -1);
+
+  assert(window.todayPerformedCount() === 2, "bugün kılınan sayısı doğru hesaplanıyor");
+  assert(window.document.getElementById("todayVal").textContent === "2 / 5", "hedef UI'da gösteriliyor");
+}
+
 async function main() {
   await testYuzdeHicNegatifeDusmez();
   await testSyncStartEditCountArtinca();
   await testYedekDisaIceAktarmaTumAnahtarlariTasir();
+  await testGirisVaktiLogaIsleniyor();
+  await testGunlukHedefRoundTrip();
 
   console.log(`\n${passed} test geçti, ${failed} test başarısız.`);
   process.exit(failed > 0 ? 1 : 0);
